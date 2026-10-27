@@ -8,6 +8,7 @@ import "./Leads.css";
 import LeadDetailModal from "../components/LeadDetailModal";
 import { getSettings } from "./Settings";
 
+import { downloadFile } from "../auth";
 const API = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
 // ─── Niche list ───────────────────────────────────────────────────────────────
@@ -62,7 +63,7 @@ function emailBadge(status) {
 }
 function srcColor(src) {
   const map = {
-    google_places: "#e8622a",
+    google_places: "#7c3aed",
     serpapi:       "#7c3aed",
     yelp:          "#2563eb",
     manual:        "#059669",
@@ -78,7 +79,7 @@ function srcLabel(src) {
   };
   return map[src] ?? (src ?? "—");
 }
-const NICHE_PALETTE = ["#e8622a", "#7c3aed", "#2563eb", "#059669", "#f59e0b", "#dc2626", "#0ea5e9", "#a855f7"];
+const NICHE_PALETTE = ["#7c3aed", "#7c3aed", "#2563eb", "#059669", "#f59e0b", "#dc2626", "#0ea5e9", "#a855f7"];
 function nicheColor(i) {
   return NICHE_PALETTE[i % NICHE_PALETTE.length];
 }
@@ -227,7 +228,7 @@ function CitySearch({ value, onChange, placeholder = "City..." }) {
             style={{
               position: "absolute", right: 9, top: "50%",
               transform: "translateY(-50%)", fontSize: 13,
-              color: "rgba(255,255,255,0.3)", pointerEvents: "none",
+              color: "rgba(var(--ov),0.3)", pointerEvents: "none",
             }}
           />
         )}
@@ -236,7 +237,7 @@ function CitySearch({ value, onChange, placeholder = "City..." }) {
         <ul className="city-dropdown">
           {results.map((item, i) => (
             <li key={i} className="city-option" onMouseDown={() => handleSelect(item)}>
-              <i className="ti ti-map-pin" style={{ color: "#e8622a", marginRight: 6, fontSize: 12 }} />
+              <i className="ti ti-map-pin" style={{ color: "#7c3aed", marginRight: 6, fontSize: 12 }} />
               {item.label}
             </li>
           ))}
@@ -359,7 +360,7 @@ function StatCard({ icon, color, bg, label, value, sub, loading }) {
           <i className={`ti ${icon}`} style={{ color }} />
         </div>
       </div>
-      <div className="sc-value" style={{ color: "#fff" }}>
+      <div className="sc-value" style={{ color: "var(--wht)" }}>
         {loading ? (
           <span className="skeleton" style={{ width: 60, display: "inline-block" }} />
         ) : (
@@ -374,7 +375,7 @@ function StatCard({ icon, color, bg, label, value, sub, loading }) {
 
 function ScoreBar({ score, incomplete, incompleteReason }) {
   const s = score ?? 0;
-  const color = s >= 85 ? "#e8622a" : s >= 40 ? "#f59e0b" : "#3b82f6";
+  const color = s >= 85 ? "#7c3aed" : s >= 40 ? "#f59e0b" : "#3b82f6";
   return (
     <div className="score-bar-wrap">
       <div className="score-track">
@@ -501,7 +502,7 @@ export default function Leads() {
         setHotCount(ov.tiers?.hot ?? 0);
         setOnboarded(ov.onboarded ?? 0);
         setTierData([
-          { name: "Hot",  value: ov.tiers?.hot  ?? 0, color: "#e8622a" },
+          { name: "Hot",  value: ov.tiers?.hot  ?? 0, color: "#7c3aed" },
           { name: "Warm", value: ov.tiers?.warm ?? 0, color: "#f59e0b" },
           { name: "Cold", value: ov.tiers?.cold ?? 0, color: "#3b82f6" },
         ]);
@@ -510,7 +511,7 @@ export default function Leads() {
       if (pipelineRes.ok) {
         const ps = await pipelineRes.json();
         setFunnelData([
-          { name: "Scraped",    value: ps.scraped      ?? 0, fill: "#e8622a" },
+          { name: "Scraped",    value: ps.scraped      ?? 0, fill: "#7c3aed" },
           { name: "Audited",    value: ps.audited      ?? 0, fill: "#f97316" },
           { name: "Email Sent", value: ps.email_sent   ?? 0, fill: "#f59e0b" },
           { name: "Opened",     value: ps.email_opened ?? 0, fill: "#84cc16" },
@@ -805,7 +806,7 @@ export default function Leads() {
     });
 
     if (format === "csv") {
-      window.open(`${API}/leads/export/csv?${params}`, "_blank");
+      downloadFile(`/leads/export/csv?${params}`, "leads.csv").catch(() => {});
       return;
     }
 
@@ -863,10 +864,10 @@ export default function Leads() {
 
       {/* ── stat cards ── */}
       <div className="stat-grid">
-        <StatCard icon="ti-users"          color="#e8622a" bg="rgba(232,98,42,0.1)"   label="Total Leads"      value={totalLeads} sub="All scraped businesses"   loading={chartLoad} />
+        <StatCard icon="ti-users"          color="#7c3aed" bg="rgba(124,58,237,0.1)"   label="Total Leads"      value={totalLeads} sub="All scraped businesses"   loading={chartLoad} />
         <StatCard icon="ti-flame"          color="#dc2626" bg="rgba(220,38,38,0.08)"  label="Hot Leads"        value={hotCount}   sub="Score 85+"               loading={chartLoad} />
         <StatCard icon="ti-mail-check"     color="#16a34a" bg="rgba(22,163,74,0.1)"   label="Emails Verified"  value={verified}   sub="Safe to send"            loading={chartLoad} />
-        <StatCard icon="ti-building-store" color="#2563eb" bg="rgba(37,99,235,0.1)"   label="Onboarded"        value={onboarded}  sub="Joined ecomdropship.ai"  loading={chartLoad} />
+        <StatCard icon="ti-building-store" color="#2563eb" bg="rgba(37,99,235,0.1)"   label="Onboarded"        value={onboarded}  sub="Became a client"  loading={chartLoad} />
       </div>
 
       {/* ── charts row ── */}
@@ -883,7 +884,7 @@ export default function Leads() {
             {chartLoad ? (
               <div className="chart-skeleton" />
             ) : nicheData.length === 0 ? (
-              <div style={{ color: "rgba(255,255,255,0.2)", fontSize: 12, textAlign: "center", paddingTop: 40 }}>
+              <div style={{ color: "rgba(var(--ov),0.2)", fontSize: 12, textAlign: "center", paddingTop: 40 }}>
                 No data yet — run scraper first
               </div>
             ) : (
@@ -919,7 +920,7 @@ export default function Leads() {
             {chartLoad ? (
               <div className="chart-skeleton" />
             ) : tierData.every((t) => t.value === 0) ? (
-              <div style={{ color: "rgba(255,255,255,0.2)", fontSize: 12, textAlign: "center", paddingTop: 40 }}>
+              <div style={{ color: "rgba(var(--ov),0.2)", fontSize: 12, textAlign: "center", paddingTop: 40 }}>
                 No scored leads yet
               </div>
             ) : (
@@ -1003,7 +1004,7 @@ export default function Leads() {
             {chartLoad ? (
               <div className="chart-skeleton" />
             ) : timeData.every((d) => d.value === 0) ? (
-              <div style={{ color: "rgba(255,255,255,0.2)", fontSize: 12, textAlign: "center", paddingTop: 40 }}>
+              <div style={{ color: "rgba(var(--ov),0.2)", fontSize: 12, textAlign: "center", paddingTop: 40 }}>
                 No data yet — run scraper first
               </div>
             ) : (
@@ -1011,17 +1012,17 @@ export default function Leads() {
                 <AreaChart data={timeData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="leadsOverTimeFill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%"  stopColor="#e8622a" stopOpacity={0.35} />
-                      <stop offset="100%" stopColor="#e8622a" stopOpacity={0} />
+                      <stop offset="0%"  stopColor="#7c3aed" stopOpacity={0.35} />
+                      <stop offset="100%" stopColor="#7c3aed" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(var(--ov),0.06)" vertical={false} />
                   <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#999" }} axisLine={false} tickLine={false} />
                   <YAxis hide allowDecimals={false} />
-                  <Tooltip content={<CUSTOM_TOOLTIP />} cursor={{ stroke: "rgba(255,255,255,0.1)" }} />
+                  <Tooltip content={<CUSTOM_TOOLTIP />} cursor={{ stroke: "rgba(var(--ov),0.1)" }} />
                   <Area
                     type="monotone" dataKey="value"
-                    stroke="#e8622a" strokeWidth={2}
+                    stroke="#7c3aed" strokeWidth={2}
                     fill="url(#leadsOverTimeFill)"
                     animationDuration={900}
                   />
@@ -1071,7 +1072,7 @@ export default function Leads() {
               onClick={() => { setStuckOnly((v) => !v); setPage(1); }}
               title="Leads with no email AND no phone (or on the Do-Not-Contact list) — no outreach is possible for them"
               style={stuckOnly ? {
-                background: "rgba(232,98,42,0.16)", color: "#e8622a", borderColor: "#e8622a",
+                background: "rgba(124,58,237,0.16)", color: "#7c3aed", borderColor: "#7c3aed",
               } : undefined}
             >
               <i className="ti ti-plug-connected-x" /> <span>Stuck leads</span>
@@ -1095,7 +1096,7 @@ export default function Leads() {
                     type="checkbox"
                     checked={selected.length === leads.length && leads.length > 0}
                     onChange={toggleAll}
-                    style={{ accentColor: "#e8622a" }}
+                    style={{ accentColor: "#7c3aed" }}
                   />
                 </th>
                 <th>Business</th>
@@ -1137,7 +1138,7 @@ export default function Leads() {
                           type="checkbox"
                           checked={selected.includes(lead.id)}
                           onChange={() => toggleOne(lead.id)}
-                          style={{ accentColor: "#e8622a" }}
+                          style={{ accentColor: "#7c3aed" }}
                         />
                       </td>
                       <td>
@@ -1295,11 +1296,11 @@ export default function Leads() {
               </div>
 
               <div style={{
-                background: "rgba(232,98,42,0.06)", border: "1px solid rgba(232,98,42,0.15)",
+                background: "rgba(124,58,237,0.06)", border: "1px solid rgba(124,58,237,0.15)",
                 borderRadius: 10, padding: "10px 14px", fontSize: 11.5,
-                color: "rgba(255,255,255,0.4)", display: "flex", gap: 8, alignItems: "flex-start",
+                color: "rgba(var(--ov),0.4)", display: "flex", gap: 8, alignItems: "flex-start",
               }}>
-                <i className="ti ti-info-circle" style={{ color: "#e8622a", marginTop: 1, flexShrink: 0 }} />
+                <i className="ti ti-info-circle" style={{ color: "#7c3aed", marginTop: 1, flexShrink: 0 }} />
                 <span>
                   Scraping runs in the background. The page will refresh automatically in a few
                   seconds to show newly found leads.
@@ -1358,7 +1359,7 @@ export default function Leads() {
                     <div style={{
                       width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
                       display: "flex", alignItems: "center", justifyContent: "center",
-                      background: isDone ? "#16a34a" : isFailed ? "#dc2626" : isActive ? "#e8622a" : "rgba(255,255,255,0.08)",
+                      background: isDone ? "#16a34a" : isFailed ? "#dc2626" : isActive ? "#7c3aed" : "rgba(var(--ov),0.08)",
                       color: "#fff",
                     }}>
                       {isDone ? (
@@ -1426,7 +1427,7 @@ export default function Leads() {
                   display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap",
                 }}>
                   <div style={{
-                    flex: "1 1 100px", background: "rgba(255,255,255,0.04)", borderRadius: 10,
+                    flex: "1 1 100px", background: "rgba(var(--ov),0.04)", borderRadius: 10,
                     padding: "10px 12px", textAlign: "center",
                   }}>
                     <div style={{ fontSize: 20, fontWeight: 700 }}>{postScrapeJob.summary.total_found}</div>
@@ -1440,10 +1441,10 @@ export default function Leads() {
                     <div style={{ fontSize: 10.5, color: "#999" }}>Ban gayin (leads)</div>
                   </div>
                   <div style={{
-                    flex: "1 1 100px", background: "rgba(232,98,42,0.08)", borderRadius: 10,
+                    flex: "1 1 100px", background: "rgba(124,58,237,0.08)", borderRadius: 10,
                     padding: "10px 12px", textAlign: "center",
                   }}>
-                    <div style={{ fontSize: 20, fontWeight: 700, color: "#e8622a" }}>{postScrapeJob.summary.total_skipped}</div>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: "#7c3aed" }}>{postScrapeJob.summary.total_skipped}</div>
                     <div style={{ fontSize: 10.5, color: "#999" }}>Skip hui</div>
                   </div>
                 </div>
@@ -1485,8 +1486,8 @@ export default function Leads() {
                     style={{
                       display: "flex", alignItems: "flex-start", gap: 10,
                       padding: "10px 12px", borderRadius: 10, cursor: "pointer",
-                      border: postScrapeMode === opt.key ? "1px solid #e8622a" : "1px solid #e8e8e8",
-                      background: postScrapeMode === opt.key ? "rgba(232,98,42,0.06)" : "transparent",
+                      border: postScrapeMode === opt.key ? "1px solid #7c3aed" : "1px solid #e8e8e8",
+                      background: postScrapeMode === opt.key ? "rgba(124,58,237,0.06)" : "transparent",
                     }}
                   >
                     <input
@@ -1497,7 +1498,7 @@ export default function Leads() {
                     />
                     <div>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13.5, fontWeight: 600 }}>
-                        <i className={`ti ${opt.icon}`} style={{ color: "#e8622a" }} /> {opt.label}
+                        <i className={`ti ${opt.icon}`} style={{ color: "#7c3aed" }} /> {opt.label}
                       </div>
                       <div style={{ fontSize: 11.5, color: "#999", marginTop: 2 }}>{opt.sub}</div>
                     </div>
@@ -1517,11 +1518,11 @@ export default function Leads() {
               </div>
 
               <div style={{
-                background: "rgba(232,98,42,0.06)", border: "1px solid rgba(232,98,42,0.15)",
+                background: "rgba(124,58,237,0.06)", border: "1px solid rgba(124,58,237,0.15)",
                 borderRadius: 10, padding: "10px 14px", fontSize: 11.5,
-                color: "rgba(255,255,255,0.4)", display: "flex", gap: 8, alignItems: "flex-start", marginTop: 12,
+                color: "rgba(var(--ov),0.4)", display: "flex", gap: 8, alignItems: "flex-start", marginTop: 12,
               }}>
-                <i className="ti ti-info-circle" style={{ color: "#e8622a", marginTop: 1, flexShrink: 0 }} />
+                <i className="ti ti-info-circle" style={{ color: "#7c3aed", marginTop: 1, flexShrink: 0 }} />
                 <span>
                   Only leads with a verified email address will actually receive one. If no reply comes back
                   in a few days, the system automatically follows up by SMS, then by call.

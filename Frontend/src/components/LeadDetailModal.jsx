@@ -43,10 +43,10 @@ function channelMeta(status) {
     unverified:       { color: "#fbbf24", icon: "ti-alert-triangle" },
     score_low:        { color: "#fbbf24", icon: "ti-trending-down" },
     stuck_no_trigger: { color: "#fbbf24", icon: "ti-alert-triangle" },
-    not_needed:       { color: "rgba(255,255,255,0.35)", icon: "ti-minus" },
+    not_needed:       { color: "rgba(var(--ov),0.35)", icon: "ti-minus" },
     called:           { color: "#60a5fa", icon: "ti-phone-check" },
   };
-  return map[status] ?? { color: "rgba(255,255,255,0.3)", icon: "ti-help-circle" };
+  return map[status] ?? { color: "rgba(var(--ov),0.3)", icon: "ti-help-circle" };
 }
 function formatDate(d) {
   if (!d) return "—";

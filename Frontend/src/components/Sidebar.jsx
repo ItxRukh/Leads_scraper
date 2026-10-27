@@ -1,6 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { useState, useEffect } from "react";
-import { getSettings } from "../pages/Settings";
+import { BRAND } from "../brand";
 import "./Sidebar.css";
 
 const NAV = [
@@ -16,8 +15,6 @@ const NAV = [
       { to: "/admin/leads",    icon: "ti-users",          label: "Leads",         badge: null, badgeType: "count" },
       { to: "/admin/queue",    icon: "ti-list-check",     label: "Outreach queue" },
       { to: "/admin/email",    icon: "ti-mail",           label: "Email outreach" },
-      { to: "/admin/calls",    icon: "ti-phone",          label: "Call logs" },
-      { to: "/admin/whatsapp", icon: "ti-brand-whatsapp", label: "WhatsApp" },
     ],
   },
   {
@@ -37,17 +34,6 @@ const NAV = [
 ];
 
 export default function Sidebar({ leadsCount = 0, hotCount = 0, isOpen = false, onClose }) {
-  const [companyName, setCompanyName] = useState("EcomDrop.ai");
-
-  useEffect(() => {
-    setCompanyName(getSettings().companyName || "EcomDrop.ai");
-    // Pick up changes saved on the Settings page without needing a full reload
-    const onStorage = () => setCompanyName(getSettings().companyName || "EcomDrop.ai");
-    window.addEventListener("storage", onStorage);
-    const t = setInterval(onStorage, 3000);
-    return () => { window.removeEventListener("storage", onStorage); clearInterval(t); };
-  }, []);
-
   function getBadge(item) {
     if (!item.badge) return null;
     if (item.badgeType === "count" && leadsCount > 0)
@@ -68,11 +54,7 @@ export default function Sidebar({ leadsCount = 0, hotCount = 0, isOpen = false, 
       </button>
 
       <div className="sb-logo">
-        <div className="sb-logo-text">
-          {companyName === "EcomDrop.ai"
-            ? <>ECOM<span>DROP</span>.AI</>
-            : companyName}
-        </div>
+        <div className="sb-logo-text">{BRAND.name}</div>
         <div className="sb-logo-sub">Admin panel</div>
       </div>
 

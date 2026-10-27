@@ -1,5 +1,5 @@
 """
-app.py — FastAPI Backend for ecomdropship.ai Outreach System
+app.py — FastAPI Backend for the Leadwren Outreach System
 =============================================================
 This is the main entry point for the backend API.
 
@@ -124,10 +124,13 @@ from utils.exporters import export_leads_to_csv, export_dnc_to_csv, export_logs_
 # ─── App Initialization ───────────────────────────────────────────────────────
 
 app = FastAPI(
-    title="ecomdropship.ai Outreach API",
+    title="Leadwren Outreach API",
     description="Automated supplier outreach system — leads, scoring, email, calls, CRM",
     version="1.0.0",
 )
+
+from auth import router as auth_router, AuthMiddleware, log_auth_status
+app.include_router(auth_router)
 
 from webhooks.voice_webhook import router as voice_router
 app.include_router(voice_router)
@@ -168,6 +171,9 @@ _extra_origins = [
     for origin in os.getenv("CORS_ORIGINS", "").split(",")
     if origin.strip()
 ]
+# Added before CORS on purpose: the last middleware added is the outermost, and CORS must
+# wrap the login check so a 401 still carries the CORS headers the browser needs to read it.
+app.add_middleware(AuthMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://localhost:5173", *_extra_origins],
@@ -206,6 +212,7 @@ def on_startup():
     Safe to run multiple times — won't drop existing data.
     """
     init_db()
+    log_auth_status()
 
     # Start the auto follow-up scheduler (Email → SMS → Call funnel).
     # Runs entirely in the background — see scheduler.py for the logic.
@@ -225,7 +232,7 @@ def on_shutdown():
 @app.get("/", tags=["Health"])
 def root():
     """Simple health check — confirms the API is running."""
-    return {"status": "ok", "message": "ecomdropship.ai API is running"}
+    return {"status": "ok", "message": "Leadwren Outreach API is running"}
 
 
 @app.get("/health", tags=["Health"])

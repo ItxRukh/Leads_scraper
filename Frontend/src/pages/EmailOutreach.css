@@ -20,10 +20,10 @@
   position: fixed;
   inset: 0;
   background:
-    radial-gradient(ellipse 500px 400px at 10% 20%, rgba(232,98,42,0.10) 0%, transparent 70%),
-    radial-gradient(ellipse 400px 350px at 85% 10%, rgba(74,222,128,0.07) 0%, transparent 70%),
-    radial-gradient(ellipse 350px 300px at 50% 85%, rgba(245,158,11,0.07) 0%, transparent 70%),
-    radial-gradient(ellipse 300px 250px at 90% 75%, rgba(248,113,113,0.06) 0%, transparent 70%);
+    radial-gradient(ellipse 500px 400px at 10% 20%, rgba(var(--or-rgb),0.10) 0%, transparent 70%),
+    radial-gradient(ellipse 400px 350px at 85% 10%, rgba(var(--ok-rgb),0.07) 0%, transparent 70%),
+    radial-gradient(ellipse 350px 300px at 50% 85%, rgba(var(--warn-rgb),0.07) 0%, transparent 70%),
+    radial-gradient(ellipse 300px 250px at 90% 75%, rgba(var(--bad-rgb),0.06) 0%, transparent 70%);
   z-index: -1;
   pointer-events: none;
 }
@@ -39,7 +39,7 @@
 .eo-toolbar-label {
   font-size: 11px;
   font-weight: 700;
-  color: rgba(255,255,255,0.35);
+  color: rgba(var(--ov),0.35);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -51,8 +51,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(var(--ov),0.04);
+  border: 1px solid rgba(var(--ov),0.08);
   border-radius: 12px;
   padding: 3px 4px;
   max-width: 100%;
@@ -68,17 +68,17 @@
   width: 24px; height: 24px;
   border-radius: 6px;
   background: none; border: none;
-  color: rgba(255,255,255,0.4);
+  color: rgba(var(--ov),0.4);
   display: flex; align-items: center; justify-content: center;
   font-size: 13px;
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
-.my-year-arrow:hover:not(:disabled) { background: rgba(255,255,255,0.08); color: #fff; }
+.my-year-arrow:hover:not(:disabled) { background: rgba(var(--ov),0.08); color: var(--wht); }
 .my-year-arrow:disabled { opacity: 0.25; cursor: default; }
 .my-year-label {
   font-size: 12px; font-weight: 700;
-  color: rgba(255,255,255,0.8);
+  color: rgba(var(--ov),0.8);
   min-width: 54px;
   text-align: center;
   font-variant-numeric: tabular-nums;
@@ -88,7 +88,7 @@
   border-radius: 50%;
   background: rgba(244,63,94,0.14);
   border: none;
-  color: #f87171;
+  color: var(--bad);
   display: flex; align-items: center; justify-content: center;
   font-size: 10px;
   cursor: pointer;
@@ -100,7 +100,7 @@
 
 .my-divider {
   width: 1px; height: 20px;
-  background: rgba(255,255,255,0.09);
+  background: rgba(var(--ov),0.09);
   flex-shrink: 0;
 }
 
@@ -118,8 +118,8 @@
   top: 2px; bottom: 2px;
   left: 0;
   border-radius: 7px;
-  background: linear-gradient(135deg, rgba(232,98,42,0.32), rgba(232,98,42,0.12));
-  box-shadow: 0 0 0 1px rgba(232,98,42,0.4), 0 0 12px rgba(232,98,42,0.28);
+  background: linear-gradient(135deg, rgba(var(--or-rgb),0.32), rgba(var(--or-rgb),0.12));
+  box-shadow: 0 0 0 1px rgba(var(--or-rgb),0.4), 0 0 12px rgba(var(--or-rgb),0.28);
   transition: transform 0.28s cubic-bezier(0.34, 1.4, 0.64, 1);
   pointer-events: none;
 }
@@ -129,14 +129,14 @@
   flex-shrink: 0;
   font-size: 10.5px; font-weight: 600;
   font-family: inherit;
-  color: rgba(255,255,255,0.4);
+  color: rgba(var(--ov),0.4);
   background: none; border: none;
   padding: 6px 0;
   cursor: pointer;
   transition: color 0.15s;
 }
-.my-month-chip:hover:not(:disabled) { color: rgba(255,255,255,0.8); }
-.my-month-chip--active { color: #e8622a; }
+.my-month-chip:hover:not(:disabled) { color: rgba(var(--ov),0.8); }
+.my-month-chip--active { color: var(--or); }
 .my-month-chip:disabled { cursor: default; }
 
 /* ── Wide chart panel (2 cols) ───────────────────────────────────── */
@@ -168,39 +168,39 @@
 }
 
 .es-sent {
-  background: rgba(255,255,255,0.06);
-  color: rgba(255,255,255,0.4);
-  border: 1px solid rgba(255,255,255,0.09);
+  background: rgba(var(--ov),0.06);
+  color: rgba(var(--ov),0.4);
+  border: 1px solid rgba(var(--ov),0.09);
 }
 
 .es-opened {
-  background: rgba(245,158,11,0.12);
-  color: #fbbf24;
-  border: 1px solid rgba(245,158,11,0.2);
+  background: rgba(var(--warn-rgb),0.12);
+  color: var(--warn);
+  border: 1px solid rgba(var(--warn-rgb),0.2);
 }
 
 .es-replied {
-  background: rgba(74,222,128,0.12);
-  color: #4ade80;
-  border: 1px solid rgba(74,222,128,0.2);
+  background: rgba(var(--ok-rgb),0.12);
+  color: var(--ok);
+  border: 1px solid rgba(var(--ok-rgb),0.2);
 }
 
 .es-bounced {
-  background: rgba(248,113,113,0.12);
-  color: #f87171;
-  border: 1px solid rgba(248,113,113,0.2);
+  background: rgba(var(--bad-rgb),0.12);
+  color: var(--bad);
+  border: 1px solid rgba(var(--bad-rgb),0.2);
 }
 
 .es-unsub {
-  background: rgba(255,255,255,0.04);
-  color: rgba(255,255,255,0.25);
-  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(var(--ov),0.04);
+  color: rgba(var(--ov),0.25);
+  border: 1px solid rgba(var(--ov),0.06);
 }
 
 /* ── Email subject cell ──────────────────────────────────────────── */
 .email-subject {
   font-size: 12.5px;
-  color: rgba(255,255,255,0.65);
+  color: rgba(var(--ov),0.65);
   font-weight: 500;
   max-width: 220px;
   white-space: nowrap;
@@ -211,7 +211,7 @@
 /* ── Date cells ──────────────────────────────────────────────────── */
 .date-cell {
   font-size: 11.5px !important;
-  color: rgba(255,255,255,0.35) !important;
+  color: rgba(var(--ov),0.35) !important;
   white-space: nowrap;
 }
 
@@ -220,17 +220,17 @@
   display: flex;
   align-items: flex-start;
   gap: 9px;
-  background: rgba(232,98,42,0.07);
-  border: 1px solid rgba(232,98,42,0.15);
+  background: rgba(var(--or-rgb),0.07);
+  border: 1px solid rgba(var(--or-rgb),0.15);
   border-radius: 10px;
   padding: 11px 14px;
   font-size: 11.5px;
-  color: rgba(255,255,255,0.45);
+  color: rgba(var(--ov),0.45);
   line-height: 1.5;
 }
 .modal-note i {
   font-size: 14px;
-  color: #e8622a;
+  color: var(--or);
   flex-shrink: 0;
   margin-top: 1px;
 }
@@ -256,8 +256,8 @@
 .toggle-track {
   width: 40px;
   height: 22px;
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(var(--ov),0.08);
+  border: 1px solid rgba(var(--ov),0.12);
   border-radius: 11px;
   position: relative;
   transition: background 0.2s, border-color 0.2s;
@@ -265,8 +265,8 @@
 }
 
 .toggle-label input:checked ~ .toggle-track {
-  background: rgba(232,98,42,0.3);
-  border-color: rgba(232,98,42,0.5);
+  background: rgba(var(--or-rgb),0.3);
+  border-color: rgba(var(--or-rgb),0.5);
 }
 
 .toggle-thumb {
@@ -275,35 +275,35 @@
   left: 3px;
   width: 14px;
   height: 14px;
-  background: rgba(255,255,255,0.4);
+  background: rgba(var(--ov),0.4);
   border-radius: 50%;
   transition: transform 0.2s, background 0.2s;
 }
 
 .toggle-label input:checked ~ .toggle-track .toggle-thumb {
   transform: translateX(18px);
-  background: #e8622a;
+  background: var(--or);
 }
 
 .toggle-text {
   font-size: 11.5px;
-  color: rgba(255,255,255,0.4);
+  color: rgba(var(--ov),0.4);
   transition: color 0.2s;
 }
 
 .toggle-label:has(input:checked) .toggle-text {
-  color: rgba(232,98,42,0.8);
+  color: rgba(var(--or-rgb),0.8);
 }
 
 /* ── Dry run button variant ──────────────────────────────────────── */
 .btn-dry {
-  background: rgba(232,98,42,0.25) !important;
-  border: 1px solid rgba(232,98,42,0.4);
+  background: rgba(var(--or-rgb),0.25) !important;
+  border: 1px solid rgba(var(--or-rgb),0.4);
   box-shadow: none !important;
-  color: #e8622a !important;
+  color: var(--or) !important;
 }
 .btn-dry:hover {
-  background: rgba(232,98,42,0.35) !important;
+  background: rgba(var(--or-rgb),0.35) !important;
 }
 
 /* ── Responsive ──────────────────────────────────────────────────── */
@@ -337,7 +337,7 @@
 @media (max-width: 480px) {
   .my-year-label { min-width: 44px; font-size: 11px; }
   .my-divider    { display: none; }
-  .my-year       { border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 4px; margin-bottom: 2px; width: 100%; justify-content: center; }
+  .my-year       { border-bottom: 1px solid rgba(var(--ov),0.08); padding-bottom: 4px; margin-bottom: 2px; width: 100%; justify-content: center; }
   .my-filter     { flex-wrap: wrap; }
   .my-month-track { width: 100%; }
 }
@@ -355,7 +355,7 @@
   font-weight: 700;
   letter-spacing: .08em;
   text-transform: uppercase;
-  color: rgba(255,255,255,0.35);
+  color: rgba(var(--ov),0.35);
   margin-bottom: 10px;
 }
 .eo-section-label i { font-size: 14px; }
@@ -372,9 +372,9 @@
   gap: 5px;
   padding: 5px 12px;
   border-radius: 8px;
-  border: 1px solid rgba(255,255,255,0.1);
-  background: rgba(255,255,255,0.04);
-  color: rgba(255,255,255,0.5);
+  border: 1px solid rgba(var(--ov),0.1);
+  background: rgba(var(--ov),0.04);
+  color: rgba(var(--ov),0.5);
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
@@ -382,23 +382,23 @@
   white-space: nowrap;
 }
 .eo-tpl-tab:hover {
-  background: rgba(255,255,255,0.08);
-  color: rgba(255,255,255,0.8);
+  background: rgba(var(--ov),0.08);
+  color: rgba(var(--ov),0.8);
 }
 .eo-tpl-tab--active {
-  border-color: #e8622a;
-  background: rgba(232,98,42,0.12);
-  color: #e8622a;
+  border-color: var(--or);
+  background: rgba(var(--or-rgb),0.12);
+  color: var(--or);
 }
 .eo-loaded-tick {
-  color: #4ade80;
+  color: var(--ok);
   font-weight: 700;
 }
 
 /* ── settings template preview box ── */
 .eo-tpl-preview {
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.07);
+  background: rgba(var(--ov),0.03);
+  border: 1px solid rgba(var(--ov),0.07);
   border-radius: 10px;
   padding: 14px 16px;
   margin-bottom: 4px;
@@ -408,7 +408,7 @@
   align-items: flex-start;
   gap: 12px;
   padding: 6px 0;
-  border-bottom: 1px solid rgba(255,255,255,0.05);
+  border-bottom: 1px solid rgba(var(--ov),0.05);
 }
 .eo-tpl-row:last-of-type { border-bottom: none; }
 .eo-tpl-row--body { align-items: flex-start; }
@@ -416,18 +416,18 @@
   min-width: 76px;
   font-size: 11px;
   font-weight: 600;
-  color: rgba(255,255,255,0.35);
+  color: rgba(var(--ov),0.35);
   text-transform: uppercase;
   letter-spacing: .05em;
   padding-top: 2px;
 }
 .eo-tpl-val {
   font-size: 13px;
-  color: rgba(255,255,255,0.75);
+  color: rgba(var(--ov),0.75);
 }
 .eo-tpl-body {
   font-size: 12px;
-  color: rgba(255,255,255,0.65);
+  color: rgba(var(--ov),0.65);
   white-space: pre-wrap;
   margin: 0;
   font-family: inherit;
@@ -443,13 +443,13 @@
   gap: 7px;
   margin-top: 10px;
   font-size: 11.5px;
-  color: rgba(255,255,255,0.35);
+  color: rgba(var(--ov),0.35);
   line-height: 1.5;
 }
 .eo-tpl-hint i { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
-.eo-tpl-hint strong { color: rgba(255,255,255,0.6); }
+.eo-tpl-hint strong { color: rgba(var(--ov),0.6); }
 .eo-tpl-hint code {
-  background: rgba(255,255,255,0.07);
+  background: rgba(var(--ov),0.07);
   border-radius: 4px;
   padding: 1px 5px;
   font-size: 11px;
@@ -460,10 +460,10 @@
 
 .eo-textarea {
   width: 100%;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(var(--ov),0.04);
+  border: 1px solid rgba(var(--ov),0.1);
   border-radius: 10px;
-  color: #fff;
+  color: var(--wht);
   font-size: 13px;
   font-family: inherit;
   padding: 12px 14px;
@@ -474,7 +474,7 @@
 }
 .eo-textarea:focus {
   outline: none;
-  border-color: #e8622a;
+  border-color: var(--or);
 }
 
 /* ── variable chip row ── */
@@ -489,16 +489,16 @@
 .eo-var-label,
 .wa-var-label {
   font-size: 11px;
-  color: rgba(255,255,255,0.35);
+  color: rgba(var(--ov),0.35);
   font-weight: 600;
   letter-spacing: .04em;
   text-transform: uppercase;
 }
 .eo-var-chip,
 .wa-var-chip {
-  background: rgba(232,98,42,0.1);
-  border: 1px solid rgba(232,98,42,0.25);
-  color: #e8622a;
+  background: rgba(var(--or-rgb),0.1);
+  border: 1px solid rgba(var(--or-rgb),0.25);
+  color: var(--or);
   border-radius: 6px;
   padding: 3px 9px;
   font-size: 11.5px;
@@ -508,7 +508,7 @@
 }
 .eo-var-chip:hover,
 .wa-var-chip:hover {
-  background: rgba(232,98,42,0.2);
+  background: rgba(var(--or-rgb),0.2);
 }
 
 /* ── wider modal for email (lots of fields) ── */
@@ -519,7 +519,7 @@
 .opt-tag {
   font-size: 10px;
   font-weight: 400;
-  color: rgba(255,255,255,0.3);
+  color: rgba(var(--ov),0.3);
   margin-left: 4px;
 }
 

@@ -50,12 +50,21 @@ Tests use a throwaway in-memory database and never touch `data/leads.db`.
 | `ELEVENLABS_API_KEY` | Voice agent speech (optional if another voice is used) |
 | `DATABASE_URL` | SQLite file (default `sqlite:///./data/leads.db`) |
 | `PUBLIC_BASE_URL` | Public address of this API, so Twilio can reach the webhooks |
+| `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `AUTH_SECRET` | Admin login (see below). Empty `ADMIN_PASSWORD` = no login |
 
 Email verification needs no key: it checks syntax, disposable domains and the domain's mail server. If `ZEROBOUNCE_API_KEY` is set it is used instead.
 
 Never commit `.env`. It is already in `.gitignore`.
 
-There is no login: anyone who can reach the server can use the admin panel and the API. Run it on your own computer or a private network, not on the open internet.
+### Admin login
+
+Set `ADMIN_PASSWORD` (and optionally `ADMIN_USERNAME`, default `admin`) in `Backend/.env` and restart the backend: the admin panel then asks for a sign-in and every API call needs the token it returns. Set `AUTH_SECRET` to a long random text so people stay signed in across restarts. Five wrong attempts lock that address out for 10 minutes.
+
+With no `ADMIN_PASSWORD` there is **no login**: anyone who can reach the server can use the panel and the API. Do that only on your own computer. The webhooks (`/webhooks/*`, `/voice/*`) and the open-tracking pixel stay open because Instantly and Twilio cannot send a token.
+
+### Theme
+
+Colours live in `Frontend/src/theme.css` (dark and light, the agency-site purple). The sun/moon button in the top bar switches; the choice is remembered in the browser. The company name is in `Frontend/src/brand.js`.
 
 ## Database
 

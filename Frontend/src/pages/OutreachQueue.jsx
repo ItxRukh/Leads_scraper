@@ -291,7 +291,7 @@ export default function OutreachQueue() {
     <div className="oq-page">
 
       <div className="stat-grid">
-        <StatCard icon="ti-list-check" color="#e8622a" bg="rgba(232,98,42,0.08)"
+        <StatCard icon="ti-list-check" color="#7c3aed" bg="rgba(124,58,237,0.08)"
                   label="In the queue" value={data.counts.queued} sub="Hot and Warm leads waiting" loading={loading} />
         <StatCard icon="ti-bell-ringing" color="#4ade80" bg="rgba(74,222,128,0.08)"
                   label="Due now" value={data.due_now} sub="Next step is ready" loading={loading} />

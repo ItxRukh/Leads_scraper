@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { fmtDate } from "../utils/settings";
 import "./DNC.css";
 
+import { downloadFile } from "../auth";
 const API = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -187,7 +188,7 @@ export default function DNC() {
         />
         <StatCard
           icon="ti-robot"
-          color="#e8622a" bg="rgba(232,98,42,0.08)"
+          color="#7c3aed" bg="rgba(124,58,237,0.08)"
           label="Auto-detected"
           value={autoCount}
           sub="Opt-out keywords &amp; unsubs"
@@ -253,7 +254,7 @@ export default function DNC() {
               <option value="unsubscribed">Unsubscribed</option>
               <option value="opt_out_keyword">Auto opt-out</option>
             </select>
-            <button className="btn-ghost" onClick={() => window.open(`${API}/dnc/export`, "_blank")}>
+            <button className="btn-ghost" onClick={() => downloadFile("/dnc/export", "dnc.csv")}>
               <i className="ti ti-download" /> <span>Export</span>
             </button>
             <button className="btn-primary btn-danger" onClick={() => { setAddOpen(true); setAddError(""); }}>

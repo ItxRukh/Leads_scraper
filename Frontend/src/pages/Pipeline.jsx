@@ -7,6 +7,7 @@ import {
 } from "recharts";
 import "./Pipeline.css";
 
+import { downloadFile } from "../auth";
 const API = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
 // ─── Stage config — WhatsApp → SMS ───────────────────────────────────────────
@@ -15,7 +16,7 @@ const STAGES = [
   { key: "linkedin_enriched", label: "LinkedIn",          color: "#3b82f6", icon: "ti-brand-linkedin"  },
   { key: "audited",           label: "Audited",           color: "#8b5cf6", icon: "ti-search"          },
   { key: "email_verified",    label: "Email verified",    color: "#f59e0b", icon: "ti-mail-check"      },
-  { key: "email_sent",        label: "Email sent",        color: "#e8622a", icon: "ti-mail"            },
+  { key: "email_sent",        label: "Email sent",        color: "#7c3aed", icon: "ti-mail"            },
   { key: "email_opened",      label: "Email opened",      color: "#fb923c", icon: "ti-mail-opened"     },
   { key: "replied",           label: "Replied",           color: "#4ade80", icon: "ti-message-check"   },
   { key: "call_placed",       label: "Call placed",       color: "#22d3ee", icon: "ti-phone"           },
@@ -33,7 +34,7 @@ const KANBAN_STAGES = STAGES.filter(s =>
 );
 
 function tierColor(tier) {
-  return tier === "hot" ? "#e8622a" : tier === "warm" ? "#f59e0b" : "#3b82f6";
+  return tier === "hot" ? "#7c3aed" : tier === "warm" ? "#f59e0b" : "#3b82f6";
 }
 function formatDate(iso) {
   return fmtDate(iso, { month: "short", day: "numeric" });
@@ -62,7 +63,7 @@ const CUSTOM_TOOLTIP = ({ active, payload, label }) => {
     <div className="chart-tooltip">
       <div className="ct-label">{label}</div>
       {payload.map((p, i) => (
-        <div key={i} className="ct-val" style={{ color: p.color ?? "#fff" }}>
+        <div key={i} className="ct-val" style={{ color: p.color ?? "var(--wht)" }}>
           {p.name}: <b>{p.value?.toLocaleString()}</b>
         </div>
       ))}
@@ -181,7 +182,7 @@ export default function Pipeline() {
         funnelStages.map(k => ({
           name:  STAGE_MAP[k]?.label ?? k,
           value: data[k] ?? 0,
-          color: STAGE_MAP[k]?.color ?? "#e8622a",
+          color: STAGE_MAP[k]?.color ?? "#7c3aed",
         })).filter(d => d.value > 0)
       );
 
@@ -258,7 +259,7 @@ export default function Pipeline() {
     <div className="pipeline-page">
 
       <div className="stat-grid">
-        <StatCard icon="ti-layout-kanban" color="#e8622a" bg="rgba(232,98,42,0.1)"
+        <StatCard icon="ti-layout-kanban" color="#7c3aed" bg="rgba(124,58,237,0.1)"
           label="Total in pipeline" value={totalInPipeline} sub="All active leads" loading={chartLoad} />
         <StatCard icon="ti-message-check" color="#4ade80" bg="rgba(74,222,128,0.08)"
           label="Replied" value={replied} sub="Responded to outreach" loading={chartLoad} />
@@ -284,7 +285,7 @@ export default function Pipeline() {
                 <BarChart data={stageBar} barCategoryGap="25%">
                   <XAxis dataKey="name" tick={{ fontSize: 9, fill: "#888" }} axisLine={false} tickLine={false} interval={0} angle={-25} textAnchor="end" height={40} />
                   <YAxis hide />
-                  <Tooltip content={<CUSTOM_TOOLTIP />} cursor={{ fill: "rgba(255,255,255,0.03)" }} />
+                  <Tooltip content={<CUSTOM_TOOLTIP />} cursor={{ fill: "rgba(var(--ov),0.03)" }} />
                   <Bar dataKey="count" name="Leads" radius={[4, 4, 0, 0]}>
                     {stageBar.map((entry, i) => <Cell key={i} fill={entry.color} fillOpacity={0.85} />)}
                   </Bar>
@@ -398,7 +399,7 @@ export default function Pipeline() {
               <div className="panel-sub">{total.toLocaleString()} leads across all stages</div>
             </div>
             <div className="table-actions">
-              <button className="btn-ghost" onClick={() => window.open(`${API}/leads/export/csv`, "_blank")}>
+              <button className="btn-ghost" onClick={() => downloadFile("/leads/export/csv", "leads.csv")}>
                 <i className="ti ti-download" /> <span>Export CSV</span>
               </button>
             </div>
@@ -435,7 +436,7 @@ export default function Pipeline() {
                           <td>
                             <div className="biz-name">{lead.name}</div>
                             <div className="biz-src">
-                              <span className="src-dot" style={{ background: "#e8622a" }} />ID #{lead.id}
+                              <span className="src-dot" style={{ background: "#7c3aed" }} />ID #{lead.id}
                             </div>
                           </td>
                           <td>
@@ -459,7 +460,7 @@ export default function Pipeline() {
                           <td className="dim-cell">
                             {lead.email_verified
                               ? <span style={{ color: "#4ade80" }}>✓ {lead.email}</span>
-                              : <span style={{ color: "rgba(255,255,255,0.3)" }}>{lead.email ?? "—"}</span>}
+                              : <span style={{ color: "rgba(var(--ov),0.3)" }}>{lead.email ?? "—"}</span>}
                           </td>
                           <td className="date-cell">{formatDate(lead.updated_at)}</td>
                           <td>

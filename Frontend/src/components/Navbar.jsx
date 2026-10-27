@@ -3,14 +3,15 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { notificationsAPI } from "../api/client";
 import "./Navbar.css";
 import { ConnectionChips } from "./ConnectionStatus";
+import ThemeToggle from "./ThemeToggle";
+import { BRAND } from "../brand";
+import { getToken, logout } from "../auth";
 
 const PAGE_TITLES = {
   "/admin/analytics": { label: "Analytics",       sub: "Funnel, conversion and campaign stats" },
   "/admin/leads":     { label: "Leads",            sub: "All scraped and scored supplier leads" },
   "/admin/queue":     { label: "Outreach queue",   sub: "Who to contact next, and when" },
   "/admin/email":     { label: "Email outreach",   sub: "Campaigns via Instantly" },
-  "/admin/calls":     { label: "Call logs",        sub: "VAPI voice call history" },
-  "/admin/whatsapp":  { label: "WhatsApp",         sub: "Follow-up messages" },
   "/admin/pipeline":  { label: "Pipeline",         sub: "CRM — track every lead stage" },
   "/admin/dnc":       { label: "DNC / Blacklist",  sub: "Do-not-contact list management" },
   "/admin/profiles":  { label: "Industry profiles", sub: "Search, scoring and offer for each industry" },
@@ -146,6 +147,12 @@ export default function Navbar({ onMenuClick }) {
 
       <div className="nb-right">
         <ConnectionChips />
+        <ThemeToggle />
+        {getToken() && (
+          <button className="nb-icon-btn" onClick={logout} aria-label="Sign out" title="Sign out">
+            <i className="ti ti-logout" aria-hidden="true" />
+          </button>
+        )}
         <div className="nb-notif-wrap" ref={dropdownRef}>
           <button
             className="nb-icon-btn"
@@ -199,7 +206,7 @@ export default function Navbar({ onMenuClick }) {
           <div className="nb-avatar">AD</div>
           <div className="nb-user">
             <span className="nb-user-name">Admin</span>
-            <span className="nb-user-role">ecomdropship.ai</span>
+            <span className="nb-user-role">{BRAND.shortName}</span>
           </div>
         </div>
       </div>

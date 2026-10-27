@@ -15,7 +15,7 @@ SETTINGS_FILE = os.path.join(os.path.dirname(__file__), "data", "app_settings.js
 # Mirrors Frontend/src/pages/Settings.jsx DEFAULTS for the fields the
 # backend actually needs to act on.
 DEFAULTS = {
-    "companyName":   "EcomDrop.ai",
+    "companyName":   "Leadwren",
     "adminName":     "",
     "maxLeads":      50,
     "autoAudit":     True,

@@ -2,11 +2,13 @@
 // Shared utility — import getSettings() in any page to read Settings values
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { BRAND, migrateLegacy } from "../brand";
+
 const STORAGE_KEY = "ecomdrop_settings";
 
 export const SETTINGS_DEFAULTS = {
   // General
-  companyName:   "EcomDrop.ai",
+  companyName:   BRAND.displayName,
   adminName:     "",
   timezone:      "UTC",
 
@@ -17,11 +19,11 @@ export const SETTINGS_DEFAULTS = {
   autoAudit:     true,
 
   // Email template
-  emailSubject:  "Grow your ecom store with EcomDrop",
+  emailSubject:  "A quick idea for {{business}}",
   emailBody:     "Hi {{name}},\n\nI came across {{business}} and wanted to reach out...\n\nWould love to connect!\n\nBest,\n{{sender}}",
 
   // WhatsApp template
-  waTemplate:    "Hi {{name}}, this is {{sender}} from EcomDrop. I wanted to follow up on my earlier email regarding {{business}}. Would love to chat!",
+  waTemplate:    "Hi {{name}}, this is {{sender}} from " + BRAND.displayName + ". I wanted to follow up on my earlier email regarding {{business}}. Would love to chat!",
 
   // Outreach defaults
   emailDelay:    3,
@@ -41,7 +43,7 @@ export const SETTINGS_DEFAULTS = {
 export function getSettings() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? { ...SETTINGS_DEFAULTS, ...JSON.parse(raw) } : { ...SETTINGS_DEFAULTS };
+    return raw ? { ...SETTINGS_DEFAULTS, ...migrateLegacy(JSON.parse(raw), SETTINGS_DEFAULTS) } : { ...SETTINGS_DEFAULTS };
   } catch {
     return { ...SETTINGS_DEFAULTS };
   }

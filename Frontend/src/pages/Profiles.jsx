@@ -447,7 +447,7 @@ export default function Profiles() {
     <div className="pf-page">
 
       <div className="stat-grid pf-stats">
-        <StatCard icon="ti-briefcase" color="#e8622a" bg="rgba(232,98,42,0.08)"
+        <StatCard icon="ti-briefcase" color="#7c3aed" bg="rgba(124,58,237,0.08)"
                   label="Active profiles" value={active.length} sub="Available when scraping" loading={loading} />
         <StatCard icon="ti-archive" color="#f59e0b" bg="rgba(245,158,11,0.08)"
                   label="Archived" value={archived.length} sub="Hidden from pickers" loading={loading} />

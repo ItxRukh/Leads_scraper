@@ -11,8 +11,8 @@ import "./Analytics.css";
 
 const API = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
-const OR     = "#e8622a";
-const OR_DIM = "rgba(232,98,42,0.15)";
+const OR     = "#7c3aed";
+const OR_DIM = "rgba(124,58,237,0.15)";
 const BLUE   = "#3b82f6";
 const GREEN  = "#22c55e";
 const PURPLE = "#a855f7";
@@ -124,12 +124,12 @@ function RateGauge({ label, pct, color, icon, sub, loading }) {
   return (
     <div className="an-gauge">
       <svg width="100" height="100" viewBox="0 0 100 100">
-        <circle cx="50" cy="50" r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="8" />
+        <circle cx="50" cy="50" r={r} fill="none" stroke="rgba(var(--ov),0.06)" strokeWidth="8" />
         <circle cx="50" cy="50" r={r} fill="none" stroke={color} strokeWidth="8"
           strokeDasharray={`${dash} ${circ}`} strokeLinecap="round"
           transform="rotate(-90 50 50)" style={{ transition: "stroke-dasharray 1.2s ease" }} />
         <text x="50" y="46" textAnchor="middle" fill={color} fontSize="14" fontWeight="800">{loading ? "—" : `${pct}%`}</text>
-        <text x="50" y="60" textAnchor="middle" fill="rgba(255,255,255,0.3)" fontSize="9">{icon}</text>
+        <text x="50" y="60" textAnchor="middle" fill="rgba(var(--ov),0.3)" fontSize="9">{icon}</text>
       </svg>
       <div className="an-gauge-label">{label}</div>
       {sub && <div className="an-gauge-sub">{sub}</div>}
@@ -217,7 +217,7 @@ function CustomTreeContent(props) {
       {width > 60 && height > 35 && (
         <>
           <text x={x + 10} y={y + 20} fill={color} fontSize={11} fontWeight={700}>{name}</text>
-          <text x={x + 10} y={y + 34} fill="rgba(255,255,255,0.4)" fontSize={10}>{value}</text>
+          <text x={x + 10} y={y + 34} fill="rgba(var(--ov),0.4)" fontSize={10}>{value}</text>
         </>
       )}
     </g>
@@ -422,8 +422,8 @@ export default function Analytics() {
             {loading ? <span className="an-skel an-skel--chart" /> : (
               <ResponsiveContainer width="100%" height={230}>
                 <RadarChart data={tierData} margin={{ top: 10, right: 20, bottom: 10, left: 20 }}>
-                  <PolarGrid stroke="rgba(255,255,255,0.07)" />
-                  <PolarAngleAxis dataKey="subject" tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 10 }} />
+                  <PolarGrid stroke="rgba(var(--ov),0.07)" />
+                  <PolarAngleAxis dataKey="subject" tick={{ fill: "rgba(var(--ov),0.35)", fontSize: 10 }} />
                   <Radar name="Count" dataKey="value" stroke={OR} fill={OR} fillOpacity={0.18} strokeWidth={2} dot={{ fill: OR, r: 3 }} />
                   <Tooltip content={<ATip />} />
                 </RadarChart>
@@ -466,9 +466,9 @@ export default function Analytics() {
             {loading ? <span className="an-skel an-skel--chart" /> : (
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={chanData} barGap={4} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
-                  <XAxis dataKey="name" tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fill: "rgba(255,255,255,0.25)", fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <Tooltip content={<ATip />} cursor={{ fill: "rgba(255,255,255,0.03)" }} />
+                  <XAxis dataKey="name" tick={{ fill: "rgba(var(--ov),0.35)", fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fill: "rgba(var(--ov),0.25)", fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <Tooltip content={<ATip />} cursor={{ fill: "rgba(var(--ov),0.03)" }} />
                   <Bar dataKey="sent"    name="Sent"    fill={BLUE}  radius={[4,4,0,0]} />
                   <Bar dataKey="replied" name="Replied" fill={GREEN} radius={[4,4,0,0]} />
                 </BarChart>
@@ -524,9 +524,9 @@ export default function Analytics() {
                   ]}
                   margin={{ top: 4, right: 4, left: -20, bottom: 0 }}
                 >
-                  <XAxis dataKey="name" tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fill: "rgba(255,255,255,0.25)", fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <Tooltip content={<ATip />} cursor={{ fill: "rgba(255,255,255,0.03)" }} />
+                  <XAxis dataKey="name" tick={{ fill: "rgba(var(--ov),0.35)", fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fill: "rgba(var(--ov),0.25)", fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <Tooltip content={<ATip />} cursor={{ fill: "rgba(var(--ov),0.03)" }} />
                   <Bar dataKey="count" name="Count" radius={[6,6,0,0]}>
                     <Cell fill={OR} /><Cell fill={AMBER} /><Cell fill={BLUE} /><Cell fill={TEAL} />
                   </Bar>

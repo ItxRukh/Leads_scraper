@@ -1,5 +1,6 @@
 // client.js — Axios instance for FastAPI backend
 import axios from "axios";
+import { getToken, logout } from "../auth";
 
 // In dev, talk to the local FastAPI server on :8000.
 // In production, the frontend is served BY the same FastAPI backend
@@ -15,6 +16,19 @@ const client = axios.create({
     "Content-Type": "application/json",
   },
 });
+
+client.interceptors.request.use((config) => {
+  const token = getToken();
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+client.interceptors.response.use(
+  (res) => res,
+  (err) => {
+    if (err.response?.status === 401 && getToken()) logout();   // token expired or revoked
+    return Promise.reject(err);
+  }
+);
 
 // ── Leads ──────────────────────────────────────────────────
 export const leadsAPI = {

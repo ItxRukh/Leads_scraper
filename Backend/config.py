@@ -78,7 +78,7 @@ class Settings(BaseSettings):
     # revenue calculator). This is DIFFERENT from PUBLIC_BASE_URL above —
     # that one is the backend API's ngrok URL, this is the actual website
     # link we put in emails/SMS for leads to visit.
-    PUBLIC_SITE_URL: str = "https://ecomdropship.ai"
+    PUBLIC_SITE_URL: str = ""   # public website to link in messages; set when there is one
 
     # ── SMS + Calls (Twilio) ────────────────────────────────────────────────
     TWILIO_ACCOUNT_SID: str = ""
@@ -94,6 +94,12 @@ class Settings(BaseSettings):
 
     # ── App ─────────────────────────────────────────────────────────────────
     APP_ENV: str = "development"
+
+    # ── Admin login (see auth.py). Empty ADMIN_PASSWORD = no login, API open ──
+    ADMIN_USERNAME: str = "admin"
+    ADMIN_PASSWORD: str = ""
+    AUTH_SECRET: str = ""
+    AUTH_TOKEN_HOURS: float = 12
 
     # ── Error Monitoring (optional) ─────────────────────────────────────────
     # Leave blank to skip Sentry entirely — rotating file logs (logs/app.log)

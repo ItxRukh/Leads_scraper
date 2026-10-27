@@ -8,6 +8,7 @@ import { getSettings, fmtDate } from "../utils/settings";
 import LeadDetailModal from "../components/LeadDetailModal";
 import "./EmailOutreach.css";
 
+import { downloadFile } from "../auth";
 const API = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -44,7 +45,7 @@ function StatCard({ icon, color, bg, label, value, sub, loading }) {
           <i className={`ti ${icon}`} style={{ color }} />
         </div>
       </div>
-      <div className="sc-value" style={{ color: color === "#e8622a" ? "#fff" : color }}>
+      <div className="sc-value" style={{ color: color === "#7c3aed" ? "var(--wht)" : color }}>
         {loading ? <span className="skeleton w-16" /> : (value ?? 0).toLocaleString()}
       </div>
       <div className="sc-label">{label}</div>
@@ -59,7 +60,7 @@ const CUSTOM_TOOLTIP = ({ active, payload, label }) => {
     <div className="chart-tooltip">
       <div className="ct-label">{label}</div>
       {payload.map((p, i) => (
-        <div key={i} className="ct-val" style={{ color: p.color ?? "#fff" }}>
+        <div key={i} className="ct-val" style={{ color: p.color ?? "var(--wht)" }}>
           {p.name}: <b>{p.value?.toLocaleString()}</b>
         </div>
       ))}
@@ -281,7 +282,7 @@ export default function EmailOutreach() {
       const pending = Math.max(sent - opened - replied - bounced, 0);
       setStatusDist([
         { name: "Replied",  value: replied, color: "#4ade80" },
-        { name: "Opened",   value: opened,  color: "#e8622a" },
+        { name: "Opened",   value: opened,  color: "#7c3aed" },
         { name: "Pending",  value: pending, color: "#3b82f6" },
         { name: "Bounced",  value: bounced, color: "#f87171" },
       ]);
@@ -422,10 +423,10 @@ export default function EmailOutreach() {
       <div className="stat-grid">
         <StatCard
           icon="ti-send"
-          color="#e8622a" bg="rgba(232,98,42,0.1)"
+          color="#7c3aed" bg="rgba(124,58,237,0.1)"
           label="Emails sent"
           value={stats?.sent}
-          sub={<><b style={{ color: "#e8622a" }}>via Instantly</b></>}
+          sub={<><b style={{ color: "#7c3aed" }}>via Instantly</b></>}
           loading={chartLoad}
         />
         <StatCard
@@ -474,11 +475,11 @@ export default function EmailOutreach() {
             {chartLoad ? <div className="chart-skeleton" /> : (
               <ResponsiveContainer width="100%" height={150}>
                 <LineChart data={trendData}>
-                  <CartesianGrid stroke="rgba(255,255,255,0.05)" strokeDasharray="3 3" />
+                  <CartesianGrid stroke="rgba(var(--ov),0.05)" strokeDasharray="3 3" />
                   <XAxis dataKey="day" tick={{ fontSize: 10, fill: "#999" }} axisLine={false} tickLine={false} />
                   <YAxis hide />
-                  <Tooltip content={<CUSTOM_TOOLTIP />} cursor={{ stroke: "rgba(255,255,255,0.08)" }} />
-                  <Line type="monotone" dataKey="sent"    name="Sent"    stroke="#e8622a" strokeWidth={2} dot={false} />
+                  <Tooltip content={<CUSTOM_TOOLTIP />} cursor={{ stroke: "rgba(var(--ov),0.08)" }} />
+                  <Line type="monotone" dataKey="sent"    name="Sent"    stroke="#7c3aed" strokeWidth={2} dot={false} />
                   <Line type="monotone" dataKey="opened"  name="Opened"  stroke="#f59e0b" strokeWidth={2} dot={false} />
                   <Line type="monotone" dataKey="replied" name="Replied" stroke="#4ade80" strokeWidth={2} dot={false} />
                 </LineChart>
@@ -486,7 +487,7 @@ export default function EmailOutreach() {
             )}
             <div className="chart-legend">
               {[
-                { color: "#e8622a", label: "Sent" },
+                { color: "#7c3aed", label: "Sent" },
                 { color: "#f59e0b", label: "Opened" },
                 { color: "#4ade80", label: "Replied" },
               ].map((item, i) => (
@@ -557,13 +558,13 @@ export default function EmailOutreach() {
                   <XAxis dataKey="niche" tick={{ fontSize: 10, fill: "#999" }} axisLine={false} tickLine={false} />
                   <YAxis hide />
                   <Tooltip content={<CUSTOM_TOOLTIP />} cursor={{ fill: "rgba(0,0,0,0.03)" }} />
-                  <Bar dataKey="sent"    name="Sent"    fill="rgba(232,98,42,0.25)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="sent"    name="Sent"    fill="rgba(124,58,237,0.25)" radius={[4, 4, 0, 0]} />
                   <Bar dataKey="replied" name="Replied" fill="#4ade80"              radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )}
             <div className="chart-legend">
-              <div className="legend-item"><span className="legend-dot" style={{ background: "rgba(232,98,42,0.5)" }} />Sent</div>
+              <div className="legend-item"><span className="legend-dot" style={{ background: "rgba(124,58,237,0.5)" }} />Sent</div>
               <div className="legend-item"><span className="legend-dot" style={{ background: "#4ade80" }} />Replied</div>
             </div>
           </div>
@@ -580,7 +581,7 @@ export default function EmailOutreach() {
             {chartLoad ? <div className="chart-skeleton" /> : (
               <ResponsiveContainer width="100%" height={190}>
                 <RadarChart data={rateData} outerRadius="70%">
-                  <PolarGrid stroke="rgba(255,255,255,0.08)" />
+                  <PolarGrid stroke="rgba(var(--ov),0.08)" />
                   <PolarAngleAxis dataKey="niche" tick={{ fontSize: 10, fill: "#999" }} />
                   <PolarRadiusAxis domain={[0, 100]} tick={{ fontSize: 8, fill: "#666" }} axisLine={false} />
                   <Tooltip content={<CUSTOM_TOOLTIP />} />
@@ -613,7 +614,7 @@ export default function EmailOutreach() {
               <option value="bounced">Bounced</option>
               <option value="unsubscribed">Unsubscribed</option>
             </select>
-            <button className="btn-ghost" onClick={() => window.open(`${API}/email-logs/export`, "_blank")}>
+            <button className="btn-ghost" onClick={() => downloadFile("/email-logs/export", "email-logs.csv")}>
               <i className="ti ti-download" /> <span>Export</span>
             </button>
             <button className="btn-primary" onClick={() => setComposeOpen(true)}>
@@ -631,7 +632,7 @@ export default function EmailOutreach() {
                     type="checkbox"
                     checked={selected.length === logs.length && logs.length > 0}
                     onChange={toggleAll}
-                    style={{ accentColor: "#e8622a" }}
+                    style={{ accentColor: "#7c3aed" }}
                   />
                 </th>
                 <th>Recipient</th>
@@ -675,13 +676,13 @@ export default function EmailOutreach() {
                             type="checkbox"
                             checked={selected.includes(log.id)}
                             onChange={() => toggleOne(log.id)}
-                            style={{ accentColor: "#e8622a" }}
+                            style={{ accentColor: "#7c3aed" }}
                           />
                         </td>
                         <td>
                           <div className="biz-name">{log.personalized_for ?? `Lead #${log.lead_id}`}</div>
                           <div className="biz-src">
-                            <span className="src-dot" style={{ background: "#e8622a" }} />
+                            <span className="src-dot" style={{ background: "#7c3aed" }} />
                             Lead ID: {log.lead_id}
                           </div>
                         </td>
@@ -696,12 +697,12 @@ export default function EmailOutreach() {
                         <td className="date-cell">
                           {log.replied_at
                             ? <span style={{ color: "#4ade80" }}>{formatDate(log.replied_at)}</span>
-                            : <span style={{ color: "rgba(255,255,255,0.2)" }}>—</span>}
+                            : <span style={{ color: "rgba(var(--ov),0.2)" }}>—</span>}
                         </td>
                         <td>
                           {log.campaign_id
                             ? <span className="stage-badge">{log.campaign_id}</span>
-                            : <span style={{ color: "rgba(255,255,255,0.2)" }}>—</span>}
+                            : <span style={{ color: "rgba(var(--ov),0.2)" }}>—</span>}
                         </td>
                         <td>
                           <div className="row-actions">

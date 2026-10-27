@@ -1,0 +1,60 @@
+.lg-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  background: var(--blk);
+  color: var(--wht);
+  font-family: var(--font);
+}
+.lg-card {
+  width: 100%;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 32px 28px 28px;
+  background: var(--blk3);
+  border: 1px solid var(--bdr);
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+}
+.lg-title { margin: 0; font-size: 18px; font-weight: 800; letter-spacing: 0.14em; }
+.lg-sub { margin: 0 0 14px; font-size: 13px; color: var(--muted); }
+.lg-label { font-size: 12px; font-weight: 600; color: var(--muted); margin-top: 6px; }
+.lg-input {
+  width: 100%;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--wht);
+  background: var(--blk4);
+  border: 1px solid var(--bdr);
+  border-radius: 10px;
+  outline: none;
+}
+.lg-input:focus { border-color: var(--or); box-shadow: 0 0 0 3px var(--or-dim); }
+.lg-error {
+  margin-top: 8px;
+  padding: 9px 12px;
+  font-size: 13px;
+  color: var(--bad);
+  background: rgba(var(--bad-rgb), 0.1);
+  border: 1px solid rgba(var(--bad-rgb), 0.3);
+  border-radius: 10px;
+}
+.lg-btn {
+  margin-top: 16px;
+  padding: 11px 14px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--on-accent);
+  background: var(--or);
+  border: 0;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.lg-btn:hover:not(:disabled) { background: var(--or-dark); }
+.lg-btn:disabled { opacity: 0.55; cursor: not-allowed; }

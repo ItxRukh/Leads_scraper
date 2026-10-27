@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import "./Settings.css";
+import { BRAND, migrateLegacy } from "../brand";
 
 const API = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 const STORAGE_KEY = "ecomdrop_settings";
@@ -13,15 +14,15 @@ const BACKEND_FIELDS = [
 ];
 
 const DEFAULTS = {
-  companyName:   "EcomDrop.ai",
+  companyName:   BRAND.displayName,
   adminName:     "",
   defaultCity:   "",
   defaultNiche:  "",
   maxLeads:      50,
   autoAudit:     true,
-  emailSubject:  "Grow your ecom store with EcomDrop",
+  emailSubject:  "A quick idea for {{business}}",
   emailBody:     "Hi {{name}},\n\nI came across {{business}} and wanted to reach out...\n\nWould love to connect!\n\nBest,\n{{sender}}",
-  smsTemplate:   "Hi {{name}}, this is {{sender}} from EcomDrop. Following up on my earlier email about {{business}}. Open to a quick 10-min chat?",  // waTemplate → smsTemplate
+  smsTemplate:   "Hi {{name}}, this is {{sender}} from " + BRAND.displayName + ". Following up on my earlier email about {{business}}. Open to a quick 10-min chat?",  // waTemplate → smsTemplate
   emailDelay:    3,
   maxEmailsDay:  100,
   hotThreshold:  70,
@@ -40,7 +41,7 @@ function load() {
       saved.smsTemplate = saved.waTemplate;
       delete saved.waTemplate;
     }
-    return { ...DEFAULTS, ...saved };
+    return { ...DEFAULTS, ...migrateLegacy(saved, DEFAULTS) };
   } catch { return { ...DEFAULTS }; }
 }
 
@@ -255,7 +256,7 @@ function CitySearch({ value, onChange, placeholder = "City..." }) {
             style={{
               position: "absolute", right: 9, top: "50%",
               transform: "translateY(-50%)", fontSize: 13,
-              color: "rgba(255,255,255,0.3)", pointerEvents: "none",
+              color: "rgba(var(--ov),0.3)", pointerEvents: "none",
             }}
           />
         )}
@@ -264,7 +265,7 @@ function CitySearch({ value, onChange, placeholder = "City..." }) {
         <ul className="city-dropdown">
           {results.map((item, i) => (
             <li key={i} className="city-option" onMouseDown={() => handleSelect(item)}>
-              <i className="ti ti-map-pin" style={{ color: "#e8622a", marginRight: 6, fontSize: 12 }} />
+              <i className="ti ti-map-pin" style={{ color: "#7c3aed", marginRight: 6, fontSize: 12 }} />
               {item.label}
             </li>
           ))}
@@ -470,11 +471,11 @@ export default function Settings() {
 
           {/* ── GENERAL ── */}
           {active === "general" && (
-            <Section icon="ti-building-store" color="#e8622a" bg="rgba(232,98,42,0.13)"
+            <Section icon="ti-building-store" color="#7c3aed" bg="rgba(124,58,237,0.13)"
               title="General" sub="Basic info about your workspace">
               <Field label="Company Name" hint="Shown across the admin panel">
                 <input className="st-input" value={cfg.companyName}
-                  onChange={e => set("companyName", e.target.value)} placeholder="EcomDrop.ai" />
+                  onChange={e => set("companyName", e.target.value)} placeholder={BRAND.displayName} />
               </Field>
               <Field label="Admin Name" hint="Your name, used in email signatures">
                 <input className="st-input" value={cfg.adminName}
@@ -551,7 +552,7 @@ export default function Settings() {
                       placeholder="Hi {{name}}, this is {{sender}}..."
                       maxLength={320}
                     />
-                    <div style={{ fontSize: 11, color: cfg.smsTemplate?.length > 160 ? "#f59e0b" : "rgba(255,255,255,0.3)", marginTop: 4 }}>
+                    <div style={{ fontSize: 11, color: cfg.smsTemplate?.length > 160 ? "#f59e0b" : "rgba(var(--ov),0.3)", marginTop: 4 }}>
                       {cfg.smsTemplate?.length ?? 0} / 160 chars
                       {cfg.smsTemplate?.length > 160 && " — will send as 2 SMS"}
                     </div>
@@ -584,7 +585,7 @@ export default function Settings() {
               </div>
               <Field label="Hot Lead Threshold" hint={`Score ≥ ${cfg.hotThreshold} = 🔥 Hot`}>
                 <Slider value={cfg.hotThreshold} min={cfg.warmThreshold + 5} max={95} step={5}
-                  color="#e8622a" onChange={v => set("hotThreshold", v)} />
+                  color="#7c3aed" onChange={v => set("hotThreshold", v)} />
               </Field>
               <Field label="Warm Lead Threshold" hint={`Score ${cfg.warmThreshold}–${cfg.hotThreshold - 1} = 🟡 Warm`}>
                 <Slider value={cfg.warmThreshold} min={10} max={cfg.hotThreshold - 5} step={5}
