@@ -8,6 +8,10 @@ import_api.py — The Import page's endpoints
     GET    /imports              earlier imports
     POST   /imports/{id}/audit   check the websites of the batch's leads and score them (runs in the background)
     GET    /imports/{id}/audit-status   how far the audit is, and how many leads are Hot / Warm / Cold
+    POST   /imports/{id}/run      check the websites, then the emails, in one go (runs in the background)
+    GET    /imports/{id}/pipeline   which of those two is running, and the counts of both
+    POST   /imports/{id}/verify   check the email addresses of the batch's Hot and Warm leads (runs in the background)
+    GET    /imports/{id}/verify-status   how many are checked, and valid / invalid / catch-all / unknown
     DELETE /imports/{id}         undo an import, only while none of its leads has been contacted
 """
 
@@ -179,16 +183,63 @@ def start_audit(batch_id: int, background: BackgroundTasks, db: Session = Depend
     return {"started": True, "pending": pending}
 
 
-@router.get("/{batch_id}/audit-status")
-def audit_status(batch_id: int, db: Session = Depends(get_db)):
-    if not db.get(ImportBatch, batch_id):
-        raise HTTPException(404, "Import not found")
+def audit_counts(db: Session, batch_id: int) -> dict:
     leads = db.query(Lead.audited_at, Lead.tier, Lead.score_incomplete).filter(Lead.import_batch_id == batch_id).all()
     audited = [row for row in leads if row.audited_at]
     tiers = [row.tier for row in audited]
     return {"total": len(leads), "audited": len(audited),
             "hot": tiers.count(LeadTier.HOT), "warm": tiers.count(LeadTier.WARM), "cold": tiers.count(LeadTier.COLD),
             "incomplete": sum(1 for row in audited if row.score_incomplete)}
+
+
+@router.get("/{batch_id}/audit-status")
+def audit_status(batch_id: int, db: Session = Depends(get_db)):
+    if not db.get(ImportBatch, batch_id):
+        raise HTTPException(404, "Import not found")
+    return audit_counts(db, batch_id)
+
+
+@router.post("/{batch_id}/run", status_code=202)
+def start_pipeline(batch_id: int, background: BackgroundTasks, db: Session = Depends(get_db)):
+    """One button: check every website and score the lead, then check the emails of the Hot and Warm ones."""
+    import pipeline_run
+
+    if not db.get(ImportBatch, batch_id):
+        raise HTTPException(404, "Import not found")
+    background.add_task(pipeline_run.run_batch_pipeline, batch_id)
+    return {"started": True}
+
+
+@router.get("/{batch_id}/pipeline")
+def pipeline_state(batch_id: int, db: Session = Depends(get_db)):
+    import pipeline_run
+
+    if not db.get(ImportBatch, batch_id):
+        raise HTTPException(404, "Import not found")
+    return pipeline_run.pipeline_status(db, batch_id)
+
+
+@router.post("/{batch_id}/verify", status_code=202)
+def start_verify(batch_id: int, background: BackgroundTasks, db: Session = Depends(get_db)):
+    import email_verification
+
+    if not db.get(ImportBatch, batch_id):
+        raise HTTPException(404, "Import not found")
+    status = email_verification.batch_status(db, batch_id)
+    pending = status["to_check"] - status["checked"]
+    if pending <= 0:
+        return {"started": False, "pending": 0}
+    background.add_task(email_verification.verify_batch, batch_id)
+    return {"started": True, "pending": pending}
+
+
+@router.get("/{batch_id}/verify-status")
+def verify_status(batch_id: int, db: Session = Depends(get_db)):
+    import email_verification
+
+    if not db.get(ImportBatch, batch_id):
+        raise HTTPException(404, "Import not found")
+    return email_verification.batch_status(db, batch_id)
 
 
 @router.delete("/{batch_id}")

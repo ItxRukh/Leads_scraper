@@ -6,9 +6,7 @@ import MessageApprovals from "../components/MessageApprovals";
 const API = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
 const CHANNEL_META = {
-  email:    { label: "Email",    icon: "ti-mail" },
-  whatsapp: { label: "WhatsApp", icon: "ti-brand-whatsapp" },
-  call:     { label: "Call",     icon: "ti-phone" },
+  email: { label: "Email", icon: "ti-mail" },        // SMS and calls happen in GoHighLevel after a reply
 };
 const MODES = [
   { value: "manual",   label: "Manual",   hint: "You do it, then press Done" },
@@ -298,7 +296,7 @@ export default function OutreachQueue() {
         <StatCard icon="ti-player-pause" color="#f59e0b" bg="rgba(245,158,11,0.08)"
                   label="Paused" value={data.counts.paused} sub="On hold" loading={loading} />
         <StatCard icon="ti-send" color="#60a5fa" bg="rgba(96,165,250,0.08)"
-                  label="Done today" value={sentToday} sub="Emails, WhatsApp and calls" loading={loading} />
+                  label="Done today" value={sentToday} sub="Emails handed over or sent" loading={loading} />
       </div>
 
       {plan && (

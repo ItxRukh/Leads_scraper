@@ -298,17 +298,3 @@ def test_skipping_a_reply_only_drops_it(db, clock, ai):
     ms.skip(db, draft.id)
     assert draft.status == "discarded"
     assert db.query(OutreachStepLog).count() == 0                 # no step was skipped
-
-
-def test_a_whatsapp_reply_goes_to_the_extension(db, clock, ai):
-    set_rules(whatsapp={"mode": "auto"}, auto_reply=True)
-    lead, entry = queue_lead(db, email=None)
-    reply(db, lead, channel="whatsapp", key="wa:1", text="Yes, interested")
-    reply_ai.process_new_replies(db)
-
-    claimed = ms.claim_whatsapp(db)
-    assert len(claimed) == 1 and claimed[0]["phone"] == "13055550100" and claimed[0]["text"] == "Thanks, happy to help."
-    msg = db.get(OutreachMessage, claimed[0]["message_id"])
-    step_before = entry.step_index
-    ms.mark_sent(db, msg, "wa-out-1")
-    assert msg.status == "sent" and entry.step_index == step_before

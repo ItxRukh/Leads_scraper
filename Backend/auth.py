@@ -12,7 +12,7 @@ The token is "<payload>.<signature>" (HMAC-SHA256), sent as `Authorization: Bear
 Set AUTH_SECRET so tokens survive a restart; without it a random one is made on every start.
 
 Left open on purpose, because other services call them and cannot send a token:
-  /webhooks/*  (Instantly, inbound SMS and calls)   /voice/*  (call script)   /track/*  (open pixel)
+  /webhooks/*  (Instantly's events; they carry their own secret, see INSTANTLY_WEBHOOK_SECRET)   /track/*  (open pixel)
 """
 
 import base64
@@ -33,7 +33,7 @@ from config import settings
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
 PUBLIC_PATHS = {"/", "/health", "/docs", "/redoc", "/openapi.json", "/docs/oauth2-redirect"}
-PUBLIC_PREFIXES = ("/auth/", "/webhooks/", "/voice/", "/track/")
+PUBLIC_PREFIXES = ("/auth/", "/webhooks/", "/track/")
 
 _SECRET = (settings.AUTH_SECRET or secrets.token_urlsafe(32)).encode()
 

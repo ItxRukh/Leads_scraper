@@ -1,4 +1,4 @@
-"""Reading replies, the WhatsApp extension contract, connection status and the message review API."""
+"""Reading replies, connection status and the message review API."""
 import json
 from datetime import datetime, timedelta
 from email.message import EmailMessage
@@ -17,7 +17,7 @@ import scheduling as sch
 from config import settings
 from database import (
     ConnectionStatus, DNCList, EmailLog, EmailStatus, InboundMessage, Lead, LeadTier,
-    OutreachMessage, PipelineStage, WhatsAppLog,
+    OutreachMessage, PipelineStage,
 )
 
 MON_10AM_NY = datetime(2026, 10, 12, 14, 0)
@@ -39,7 +39,7 @@ def fake_ai(monkeypatch):
     def fake(system_prompt, user_prompt, max_tokens=1000, temperature=0.3):
         if "Return ONLY JSON" in system_prompt:
             return json.dumps({"subject": "Quick question", "body": "Hi there."})
-        return "Hi, a short WhatsApp message."
+        return "Hi, a short message."
     monkeypatch.setattr(mw, "_call_groq", fake)
 
 
@@ -120,7 +120,7 @@ def test_a_bounce_marks_the_address_invalid(db, clock):
     # email steps are now skipped for this lead
     entry.next_due_at = None
     sch.schedule_entry(db, entry, recompute=True)
-    assert entry.next_channel == "whatsapp"
+    assert entry.sequence_status == sch.COMPLETED            # no email step is left, and other channels are not used here
 
 
 def test_a_bounce_without_the_header_is_read_from_the_text(db, clock):
@@ -197,111 +197,18 @@ def test_email_summary_states(db, monkeypatch):
     assert connections.email_summary(db)["state"] == "not_configured"
 
 
-def test_whatsapp_goes_offline_when_the_extension_falls_silent(db):
-    now = datetime(2026, 10, 12, 14, 0)
-    assert connections.whatsapp_summary(db, now)["state"] == "offline"
-    connections.record(db, "whatsapp", state="connected", detail={"number": "13055550111"}, now=now)
-    assert connections.whatsapp_summary(db, now + timedelta(seconds=60))["online"] is True
-    stale = connections.whatsapp_summary(db, now + timedelta(seconds=120))
-    assert stale["state"] == "offline" and stale["online"] is False and stale["last_seen_seconds"] == 120
-    connections.record(db, "whatsapp", state="logged_out", now=now)
-    assert connections.whatsapp_summary(db, now)["state"] == "logged_out"
-
-
-# ─── WhatsApp extension contract ──────────────────────────────────────────────
+# ─── API client ───────────────────────────────────────────────────────────────
 
 @pytest.fixture()
 def client(db):
     import connections_api
     import messages_api
-    import whatsapp_api
     from database import get_db
     app = FastAPI()
-    for module in (whatsapp_api, messages_api, connections_api):
+    for module in (messages_api, connections_api):
         app.include_router(module.router)
     app.dependency_overrides[get_db] = lambda: db
     return TestClient(app)
-
-
-def whatsapp_ready(db):
-    """A lead whose first step is an approved WhatsApp message that is due now."""
-    s = sch.load_settings()
-    s.whatsapp.mode = "auto"
-    sch.save_settings(s)
-    lead, entry = queue_lead(db, email=None)                    # phone only: starts at WhatsApp
-    ms.ensure_drafts(db)
-    return lead, entry, db.query(OutreachMessage).filter_by(channel="whatsapp").one()
-
-
-def test_heartbeat_sets_the_connection(client, db):
-    r = client.post("/whatsapp/heartbeat", json={"state": "connected", "number": "13055550111"})
-    assert r.json()["online"] is True and r.json()["number"] == "13055550111"
-    assert client.post("/whatsapp/heartbeat", json={"state": "nonsense"}).status_code == 422
-    assert client.get("/connections").json()["whatsapp"]["state"] == "connected"
-
-
-def test_the_extension_claims_and_reports_a_message(client, db, clock):
-    lead, entry, msg = whatsapp_ready(db)
-    got = client.get("/whatsapp/queue").json()["messages"]
-    assert got == [{"message_id": msg.id, "lead_id": lead.id, "lead_name": "Lead",
-                    "phone": "13055550100", "text": msg.body}]
-    assert client.get("/whatsapp/queue").json()["messages"] == []       # already claimed
-
-    r = client.post("/whatsapp/report", json={"message_id": msg.id, "status": "sent", "external_id": "wa-1"})
-    assert r.json() == {"status": "sent"}
-    assert entry.next_step_key == "call_1"                               # email steps skipped (no email), WhatsApp done
-    assert db.query(WhatsAppLog).filter_by(lead_id=lead.id).one().message_content == msg.body
-    assert client.post("/whatsapp/report", json={"message_id": msg.id, "status": "sent"}).json()["note"]
-
-
-def test_a_number_not_on_whatsapp_skips_the_step(client, db, clock):
-    lead, entry, msg = whatsapp_ready(db)
-    client.get("/whatsapp/queue")
-    client.post("/whatsapp/report", json={"message_id": msg.id, "status": "not_on_whatsapp"})
-    assert msg.status == "failed" and "not on WhatsApp" in msg.error
-    assert entry.next_step_key != "whatsapp_1"
-
-
-def test_a_failed_send_is_retried_later(client, db, clock):
-    lead, entry, msg = whatsapp_ready(db)
-    client.get("/whatsapp/queue")
-    client.post("/whatsapp/report", json={"message_id": msg.id, "status": "failed", "error": "chat not found"})
-    assert msg.status == "approved" and msg.attempts == 1
-    assert client.get("/whatsapp/queue").json()["messages"] == []       # waits 5 minutes
-    clock(MON_10AM_NY + timedelta(minutes=5))
-    assert len(client.get("/whatsapp/queue").json()["messages"]) == 1
-
-
-def test_a_number_that_cannot_be_dialled_is_skipped(client, db, clock):
-    s = sch.load_settings()
-    s.whatsapp.mode = "auto"
-    sch.save_settings(s)
-    lead, entry = queue_lead(db, email=None, phone="0300 1234567", country="Pakistan")
-    ms.ensure_drafts(db)
-    assert client.get("/whatsapp/queue").json()["messages"] == []
-    msg = db.query(OutreachMessage).one()
-    assert msg.status == "failed" and "international" in msg.error
-
-
-def test_unknown_message_reports_are_rejected(client):
-    assert client.post("/whatsapp/report", json={"message_id": 999, "status": "sent"}).status_code == 404
-
-
-def test_an_inbound_whatsapp_reply_stops_the_lead(client, db, clock):
-    lead, entry = queue_lead(db)
-    r = client.post("/whatsapp/inbound", json={"phone": "13055550100", "text": "Yes, interested", "message_id": "m1"})
-    assert r.json() == {"matched": True, "recorded": True, "lead_id": lead.id}
-    assert client.post("/whatsapp/inbound", json={"phone": "13055550100", "text": "Yes", "message_id": "m1"}).json()["recorded"] is False
-    assert client.post("/whatsapp/inbound", json={"phone": "19998887777", "text": "hi", "message_id": "m2"}).json()["matched"] is False
-    sch.refresh_stops(db)
-    assert entry.stop_reason == "replied"
-    assert db.query(WhatsAppLog).one().replied is True
-
-
-def test_a_whatsapp_stop_adds_to_dnc(client, db, clock):
-    lead, _ = queue_lead(db)
-    client.post("/whatsapp/inbound", json={"phone": "13055550100", "text": "STOP", "message_id": "m9"})
-    assert lead.do_not_contact is True
 
 
 @pytest.mark.parametrize("text,opt_out", [

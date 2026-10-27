@@ -3,9 +3,36 @@ import "./MessageApprovals.css";
 import { readError } from "../utils/apiErrors";
 
 const API = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
-const CHANNEL_ICON = { email: "ti-mail", whatsapp: "ti-brand-whatsapp" };
+const CHANNEL_ICON = { email: "ti-mail" };
 const LABEL_TEXT = { interested: "Interested", question: "Has a question", not_now: "Not now" };
 const POLL_MS = 20000;
+
+function FollowUp({ item, busy, onSave }) {
+  const [editing, setEditing] = useState(false);
+  const [subject, setSubject] = useState(item.subject ?? "");
+  const [body, setBody] = useState(item.body);
+
+  return (
+    <div className="ma-follow-item">
+      {editing ? (
+        <>
+          <input className="pf-input" value={subject} onChange={e => setSubject(e.target.value)} />
+          <textarea className="pf-textarea" rows={5} value={body} onChange={e => setBody(e.target.value)} />
+          <div className="ma-actions">
+            <button className="btn-primary" disabled={busy} onClick={async () => { if (await onSave(item.id, subject, body)) setEditing(false); }}>Save</button>
+            <button className="btn-ghost" onClick={() => setEditing(false)}>Cancel</button>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="ma-subject">{item.subject}</div>
+          <div className="ma-body">{item.body}</div>
+          {item.status === "draft" && <button className="btn-ghost" onClick={() => setEditing(true)}><i className="ti ti-pencil" /> Edit</button>}
+        </>
+      )}
+    </div>
+  );
+}
 
 function Draft({ item, busy, onAction, onSave }) {
   const [editing, setEditing] = useState(false);
@@ -19,7 +46,7 @@ function Draft({ item, busy, onAction, onSave }) {
   return (
     <div className="ma-card">
       <div className="ma-top">
-        <span className="ma-channel"><i className={`ti ${CHANNEL_ICON[item.channel]}`} /> {item.channel === "email" ? "Email" : "WhatsApp"}</span>
+        <span className="ma-channel"><i className={`ti ${CHANNEL_ICON[item.channel]}`} /> Email</span>
         <span className="ma-lead">{item.lead_name}</span>
         <span className="ma-to">{item.to}</span>
         <span className="ma-step">{item.kind === "reply" ? "Answer" : item.step_label}</span>
@@ -46,6 +73,18 @@ function Draft({ item, busy, onAction, onSave }) {
           {item.subject && <div className="ma-subject">{item.subject}</div>}
           <div className="ma-body">{item.body}</div>
         </>
+      )}
+
+      {item.followups?.length > 0 && (
+        <details className="ma-follow">
+          <summary>
+            {item.followups.length} follow-up email{item.followups.length === 1 ? "" : "s"} written with this one.
+            Approving sends the whole sequence.
+          </summary>
+          {item.followups.map((f) => (
+            <FollowUp key={`${f.id}-${f.body.length}`} item={f} busy={busy} onSave={onSave} />
+          ))}
+        </details>
       )}
 
       <div className="ma-actions">
@@ -129,7 +168,7 @@ export default function MessageApprovals({ onChanged }) {
         <div>
           <div className="panel-title">Waiting for your approval ({items.length})</div>
           <div className="panel-sub">
-            Written by the AI for steps that are due. Approved messages go out at their planned time, spaced by the gaps in Sending rules.
+            Written by the AI for leads that are due. When you use Instantly, each lead's whole email sequence is written at once and approving it hands the lead to your Instantly campaign.
           </div>
         </div>
         <div className="table-actions">

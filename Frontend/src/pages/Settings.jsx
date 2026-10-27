@@ -22,7 +22,6 @@ const DEFAULTS = {
   autoAudit:     true,
   emailSubject:  "A quick idea for {{business}}",
   emailBody:     "Hi {{name}},\n\nI came across {{business}} and wanted to reach out...\n\nWould love to connect!\n\nBest,\n{{sender}}",
-  smsTemplate:   "Hi {{name}}, this is {{sender}} from " + BRAND.displayName + ". Following up on my earlier email about {{business}}. Open to a quick 10-min chat?",  // waTemplate → smsTemplate
   emailDelay:    3,
   maxEmailsDay:  100,
   hotThreshold:  70,
@@ -36,11 +35,6 @@ function load() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return { ...DEFAULTS };
     const saved = JSON.parse(raw);
-    // Migrate old waTemplate to smsTemplate
-    if (saved.waTemplate && !saved.smsTemplate) {
-      saved.smsTemplate = saved.waTemplate;
-      delete saved.waTemplate;
-    }
     return { ...DEFAULTS, ...migrateLegacy(saved, DEFAULTS) };
   } catch { return { ...DEFAULTS }; }
 }
@@ -75,7 +69,7 @@ async function pushBackendSettings(cfg) {
   }
 }
 
-// Export getSettings so other pages (SMS.jsx, EmailOutreach.jsx, Leads.jsx)
+// Export getSettings so other pages (EmailOutreach.jsx, Leads.jsx)
 // can read it synchronously from localStorage without an extra fetch.
 export function getSettings() {
   return load();
@@ -537,31 +531,6 @@ export default function Settings() {
                   <Slider value={cfg.maxEmailsDay} min={10} max={500} step={10}
                     color="#06b6d4" onChange={v => set("maxEmailsDay", v)} />
                 </Field>
-              </Section>
-
-              {/* SMS Template — WhatsApp → SMS */}
-              <Section icon="ti-message" color="#3b82f6" bg="rgba(59,130,246,0.13)"
-                title="SMS Template" sub="Default message loaded in SMS page">
-                <Field label="SMS Message" hint="Keep it under 160 characters for a single SMS">
-                  <div className="st-textarea-wrap">
-                    <VarChips vars={["name","business","sender"]}
-                      onInsert={v => insertVar("smsTemplate", v)} />
-                    <textarea className="st-textarea st-textarea--sm" rows={4}
-                      value={cfg.smsTemplate}
-                      onChange={e => set("smsTemplate", e.target.value)}
-                      placeholder="Hi {{name}}, this is {{sender}}..."
-                      maxLength={320}
-                    />
-                    <div style={{ fontSize: 11, color: cfg.smsTemplate?.length > 160 ? "#f59e0b" : "rgba(var(--ov),0.3)", marginTop: 4 }}>
-                      {cfg.smsTemplate?.length ?? 0} / 160 chars
-                      {cfg.smsTemplate?.length > 160 && " — will send as 2 SMS"}
-                    </div>
-                  </div>
-                </Field>
-                <div className="st-template-note">
-                  <i className="ti ti-info-circle" />
-                  <span>Go to <strong>SMS</strong> page → click <strong>"Load Template"</strong> to use this message</span>
-                </div>
               </Section>
             </>
           )}

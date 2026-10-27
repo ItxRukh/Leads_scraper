@@ -43,6 +43,11 @@ def _us_state(*texts: Optional[str]) -> Optional[str]:
     return None
 
 
+def us_state(city: Optional[str], address: Optional[str]) -> Optional[str]:
+    """The two-letter US state found in an address or city text, or None."""
+    return _us_state(address, city)
+
+
 def infer_geo(city: Optional[str], address: Optional[str]) -> tuple[Optional[str], Optional[str]]:
     """Returns (country, timezone); either may be None when it cannot be told."""
     haystack = f"{address or ''} {city or ''}".lower()

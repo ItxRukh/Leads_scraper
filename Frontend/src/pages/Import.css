@@ -91,3 +91,9 @@
 .im-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
 .im-audit { margin-top: 8px; }
 .im-link--pad { margin-left: 10px; }
+
+.im-steps { list-style: none; margin: 12px 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--muted); }
+.im-step--done { color: var(--ok); }
+.im-step--active { color: var(--wht); font-weight: 600; }
+.im-step--active .ti { animation: im-spin 1s linear infinite; }
+@keyframes im-spin { to { transform: rotate(360deg); } }

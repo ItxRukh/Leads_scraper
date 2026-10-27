@@ -635,3 +635,11 @@ tr.row-selected td { background: rgba(var(--or-rgb),0.06); }
 /* modal niche select — full width, matches .form-group .city-search-wrap */
 .form-group .niche-select-wrap { width: 100%; }
 .form-group .niche-dropdown    { min-width: 100%; }
+/* "Where it is": one short answer per lead */
+.journey { display: flex; flex-direction: column; gap: 4px; max-width: 230px; }
+.journey-badge { align-self: flex-start; padding: 3px 9px; font-size: 11.5px; font-weight: 700; border-radius: 999px; background: var(--blk4); color: var(--muted); }
+.journey-badge--ok { color: var(--ok); background: rgba(var(--ok-rgb), 0.14); }
+.journey-badge--info { color: var(--info); background: rgba(var(--info-rgb), 0.14); }
+.journey-badge--warn { color: var(--warn); background: rgba(var(--warn-rgb), 0.14); }
+.journey-badge--bad { color: var(--bad); background: rgba(var(--bad-rgb), 0.14); }
+.journey-next { font-size: 11px; line-height: 1.35; color: var(--muted2); }

@@ -29,6 +29,15 @@ DEFAULTS = {
     # the weekly "no email found" digest in the bell dropdown. Compared
     # against the digest's rolling 7-day window to decide read/unread.
     "digestReadAt":  None,
+    # How approved emails leave: "instantly" hands the lead and its four emails to an Instantly campaign,
+    # "smtp" sends one email at a time from the Gmail account in .env.
+    "sendProvider":        "smtp",
+    "instantlyCampaignId": "",
+    # Check an address (free syntax/MX check, then the paid verifier if a key is set) before the lead is handed over.
+    "verifyBeforeSend":    True,
+    "sendToCatchAll":      False,          # addresses on servers that accept everything: skipped unless this is on
+    # Replies with these labels are sent to GoHighLevel (when GHL_WEBHOOK_URL is set).
+    "ghlPushLabels":       ["interested", "question"],
 }
 
 _lock = Lock()

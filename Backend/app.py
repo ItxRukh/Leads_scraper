@@ -114,11 +114,7 @@ from scripts.scraper import run_scraper
 from scripts.linkedin import run_linkedin_enrichment
 from scripts.auditor import run_auditor
 from scripts.email_verify import run_email_verifier
-from scripts.email_outreach import run_email_outreach
-from scripts.voice_agent import run_voice_agent
-from scripts.sms_outreach import run_sms_followup as run_whatsapp_followup
 from scripts.dnc import scan_replies_for_opt_outs, action_add, action_remove
-from scripts.post_scrape_pipeline import run_post_scrape_pipeline
 from utils.exporters import export_leads_to_csv, export_dnc_to_csv, export_logs_to_csv
 
 # ─── App Initialization ───────────────────────────────────────────────────────
@@ -132,17 +128,17 @@ app = FastAPI(
 from auth import router as auth_router, AuthMiddleware, log_auth_status
 app.include_router(auth_router)
 
-from webhooks.voice_webhook import router as voice_router
-app.include_router(voice_router)
-
 from webhooks.instantly_webhook import router as instantly_router
 app.include_router(instantly_router)
 
-from webhooks.inbound_webhook import router as inbound_router
-app.include_router(inbound_router)
-
 from import_api import router as import_router
 app.include_router(import_router)
+
+from integrations_api import router as integrations_router
+app.include_router(integrations_router)
+
+from dashboard_api import router as dashboard_router
+app.include_router(dashboard_router)
 
 from profiles_api import router as profiles_router
 app.include_router(profiles_router)
@@ -153,17 +149,11 @@ app.include_router(queue_router)
 from messages_api import router as messages_router
 app.include_router(messages_router)
 
-from whatsapp_api import router as whatsapp_router
-app.include_router(whatsapp_router)
-
 from connections_api import router as connections_router
 app.include_router(connections_router)
 
 from tracking_api import router as tracking_router
 app.include_router(tracking_router)
-
-from extension_api import router as extension_router
-app.include_router(extension_router)
 
 # ── CORS: Allow React frontend (localhost:3000) to talk to this API ───────────
 # Without this, browsers block cross-origin requests for security
@@ -313,12 +303,14 @@ def get_leads(
 
     from scripts.outreach_reason import get_outreach_status_bulk
     status_by_lead = get_outreach_status_bulk(leads, db)
+    import lead_journey
+    journey_by_lead = lead_journey.journeys(db, leads)
 
     return {
         "total": total,
         "page_size": limit,
         "offset": skip,
-        "leads": [_serialize_lead(lead, status_by_lead.get(lead.id)) for lead in leads],
+        "leads": [_serialize_lead(lead, status_by_lead.get(lead.id), journey_by_lead.get(lead.id)) for lead in leads],
     }
 
 
@@ -332,7 +324,27 @@ def get_lead(lead_id: int, db: Session = Depends(get_db)):
     if not lead:
         raise HTTPException(status_code=404, detail=f"Lead {lead_id} not found")
     from scripts.outreach_reason import get_outreach_status
-    return _serialize_lead(lead, get_outreach_status(lead, db))
+    import lead_journey
+    import reply_send
+    return {**_serialize_lead(lead, get_outreach_status(lead, db), lead_journey.journeys(db, [lead])[lead.id]),
+            "reply": reply_send.state(db, lead)}
+
+
+class ReplyBody(BaseModel):
+    text: str
+
+
+@app.post("/leads/{lead_id}/reply", tags=["Leads"])
+def answer_reply(lead_id: int, body: ReplyBody, db: Session = Depends(get_db)):
+    """Send an answer to the lead's reply through Instantly, in the same thread. Only ever called by pressing Send now."""
+    import reply_send
+    lead = db.get(Lead, lead_id)
+    if lead is None:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    try:
+        return reply_send.send(db, lead, body.text)
+    except reply_send.ReplyError as e:
+        raise HTTPException(status_code=e.status, detail=str(e))
 
 
 @app.get("/leads/export/csv", tags=["Leads"])
@@ -443,6 +455,7 @@ def trigger_scrape(req: ScrapeRequest, background_tasks: BackgroundTasks, db: Se
         from database import IndustryProfile
         if db.get(IndustryProfile, req.profile_id) is None:
             raise HTTPException(status_code=404, detail=f"Profile {req.profile_id} not found")
+    # (no profile given: the scraper picks the industry's own profile from the niche, e.g. "plumbers" -> Plumbing)
 
     job = ScrapingJob(
         niche=req.niche, city=req.city,
@@ -471,9 +484,25 @@ def trigger_scrape(req: ScrapeRequest, background_tasks: BackgroundTasks, db: Se
     return {
         "status": "started",
         "job_id": job.id,
-        "message": f"Scraping '{req.niche}' suppliers in '{req.city}' — running in background"
+        "message": f"Scraping '{req.niche}' businesses in '{req.city}' — running in background"
                     + (" (auto-audit enabled)" if req.auto_audit else ""),
     }
+
+
+@app.post("/pipeline/post-scrape-auto", tags=["Pipeline"])
+def trigger_post_scrape_pipeline(req: PostScrapePipelineRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+    """
+    After a Google Maps scrape: check every new lead's website and score it, then check the emails of the Hot and
+    Warm ones. Nothing is sent: drafts are written and wait for approval on the Outreach queue page.
+    The job's status moves auditing -> verifying_emails -> outreach_done, which the Leads page shows as progress.
+    """
+    import pipeline_run
+
+    job = db.get(ScrapingJob, req.job_id)
+    if job is None or job.import_batch_id is None:
+        raise HTTPException(status_code=404, detail="That scrape has no leads to process")
+    background_tasks.add_task(pipeline_run.run_batch_pipeline, job.import_batch_id, job.id)
+    return {"status": "started", "job_id": job.id, "batch_id": job.import_batch_id}
 
 
 @app.post("/pipeline/linkedin", tags=["Pipeline"])
@@ -505,100 +534,6 @@ def trigger_email_verify(background_tasks: BackgroundTasks):
     background_tasks.add_task(run_email_verifier)
     return {"status": "started", "message": "Email verification running in background"}
 
-
-@app.post("/pipeline/send-emails", tags=["Pipeline"])
-def trigger_email_outreach(req: EmailOutreachRequest, background_tasks: BackgroundTasks):
-    """
-    Phase 5 — Generates personalized cold emails using Groq AI
-    and pushes them to Instantly for sending.
-    Only targets leads above min_score with verified emails —
-    unless lead_id is set (manual "Contact Now" button), which sends to
-    that one lead regardless of score/verification (still blocked by
-    do_not_contact or a missing email — see run_email_outreach).
-    """
-    background_tasks.add_task(
-        run_email_outreach,
-        min_score=req.min_score,
-        dry_run=req.dry_run,
-        niche=req.niche,
-        city=req.city,
-        lead_id=req.lead_id,
-        subject=req.subject,
-        body=req.body,
-    )
-    return {
-        "status": "started",
-        "message": (
-            f"Sending a one-off email to lead #{req.lead_id}" if req.lead_id
-            else f"Email outreach running (min_score={req.min_score}, dry_run={req.dry_run})"
-        ),
-    }
-
-
-@app.post("/pipeline/post-scrape-auto", tags=["Pipeline"])
-def trigger_post_scrape_pipeline(req: PostScrapePipelineRequest, background_tasks: BackgroundTasks):
-    """
-    One-click chain used by the post-scrape "Send emails?" dialog:
-        Audit (score leads) → Verify emails → Send emails
-    Reuses the SAME ScrapingJob row the scrape step created, updating its
-    `status` field at each stage so the frontend can poll GET /scraping-jobs
-    and show live progress instead of a blind spinner:
-        auditing → verifying_emails → sending_emails → outreach_done (or outreach_failed)
-    """
-    background_tasks.add_task(
-        run_post_scrape_pipeline,
-        job_id=req.job_id,
-        niche=req.niche,
-        city=req.city,
-        min_score=req.min_score,
-        dry_run=req.dry_run,
-    )
-    return {
-        "status": "started",
-        "job_id": req.job_id,
-        "message": f"Running audit → verify → send-emails for '{req.niche}' in '{req.city}'",
-    }
-
-
-@app.post("/pipeline/vapi-calls", tags=["Pipeline"])
-def trigger_vapi_calls(req: VapiCallRequest, background_tasks: BackgroundTasks):
-    """
-    Phase 7 — Places AI voice calls to hot leads using our own custom
-    voice agent (Twilio + Groq + ElevenLabs). NOT VAPI — endpoint path
-    kept as 'vapi-calls' so the existing frontend doesn't need changes.
-    Each call uses a personalized script generated by Groq, spoken
-    aloud in real time using ElevenLabs text-to-speech.
-    """
-    background_tasks.add_task(
-        run_voice_agent,
-        lead_id=req.lead_id,
-        min_score=req.min_score,
-        hot_leads_only=req.hot_leads_only,
-        dry_run=req.dry_run,
-    )
-    return {"status": "started", "message": "Voice calls running in background"}
-
-
-@app.post("/pipeline/whatsapp", tags=["Pipeline"])
-def trigger_whatsapp(req: WhatsAppRequest, background_tasks: BackgroundTasks):
-    """
-    Phase 8 — Sends WhatsApp follow-ups via Twilio to leads who:
-      - Opened the email but didn't reply (after 48h)
-      - Were called but got no answer (after 24h)
-    """
-    background_tasks.add_task(
-        run_whatsapp_followup,
-        lead_id=req.lead_id,
-        trigger=req.trigger,
-        dry_run=req.dry_run,
-        message=req.message,
-    )
-    return {"status": "started", "message": "WhatsApp follow-up running in background"}
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# SECTION 3 — EMAIL LOGS
-# ═══════════════════════════════════════════════════════════════════════════════
 
 @app.get("/email-logs", tags=["Email"])
 def get_email_logs(
@@ -707,173 +642,6 @@ def export_email_logs(
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # SECTION 4 — CALL LOGS
-# ═══════════════════════════════════════════════════════════════════════════════
-
-@app.get("/call-logs", tags=["Calls"])
-def get_call_logs(
-    lead_id: Optional[int] = None,
-    search:  Optional[str] = Query(None, description="Free-text search across notes, VAPI call ID, lead name/phone"),
-    outcome: Optional[str] = Query(None, description="Filter by outcome e.g. 'interested', 'no_answer'"),
-    year:    Optional[int] = Query(None, ge=2000, le=2100, description="Filter by called_at year. Combine with month for a single month."),
-    month:   Optional[int] = Query(None, ge=1, le=12, description="Filter by called_at month (1-12). Requires year."),
-    skip:    int = 0,
-    limit:   int = 100,
-    db: Session = Depends(get_db),
-):
-    """
-    Returns VAPI voice call history.
-    Each entry includes outcome, duration, and recording URL if available.
-    """
-    query = db.query(CallLog)
-    if lead_id:
-        query = query.filter(CallLog.lead_id == lead_id)
-
-    if year is not None:
-        if month is not None:
-            since = datetime(year, month, 1)
-            until = datetime(year + 1, 1, 1) if month == 12 else datetime(year, month + 1, 1)
-        else:
-            since = datetime(year, 1, 1)
-            until = datetime(year + 1, 1, 1)
-        query = query.filter(CallLog.called_at >= since, CallLog.called_at < until)
-
-    if search:
-        like = f"%{search}%"
-        query = query.join(Lead, CallLog.lead_id == Lead.id).filter(
-            CallLog.notes.ilike(like) |
-            CallLog.vapi_call_id.ilike(like) |
-            Lead.name.ilike(like) |
-            Lead.phone.ilike(like)
-        )
-
-    if outcome:
-        try:
-            query = query.filter(CallLog.outcome == CallOutcome(outcome))
-        except ValueError:
-            query = query.filter(False)  # unknown outcome value — no matches
-
-    total = query.count()
-    logs = query.order_by(CallLog.called_at.desc()).offset(skip).limit(limit).all()
-    return {"total": total, "logs": [_serialize_call_log(log) for log in logs]}
-
-
-@app.get("/call-logs/export", tags=["Calls"])
-def export_call_logs(
-    search:  Optional[str] = None,
-    outcome: Optional[str] = None,
-    db: Session = Depends(get_db),
-):
-    """Exports voice call logs (respecting current search/outcome filters) to CSV."""
-    query = db.query(CallLog)
-    if search:
-        like = f"%{search}%"
-        query = query.join(Lead, CallLog.lead_id == Lead.id).filter(
-            CallLog.notes.ilike(like) |
-            CallLog.vapi_call_id.ilike(like) |
-            Lead.name.ilike(like) |
-            Lead.phone.ilike(like)
-        )
-    if outcome:
-        try:
-            query = query.filter(CallLog.outcome == CallOutcome(outcome))
-        except ValueError:
-            query = query.filter(False)
-
-    logs = query.order_by(CallLog.called_at.desc()).all()
-    rows = [_serialize_call_log(log) for log in logs]
-    columns = ["id", "lead_id", "vapi_call_id", "called_at", "duration_sec",
-               "outcome", "notes", "recording_url"]
-    path = export_logs_to_csv(rows, columns, "call_logs")
-    if not path:
-        raise HTTPException(status_code=404, detail="No call logs to export")
-    return FileResponse(path=path, media_type="text/csv", filename=os.path.basename(path))
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# SECTION 5 — WHATSAPP LOGS
-# ═══════════════════════════════════════════════════════════════════════════════
-
-@app.get("/whatsapp-logs", tags=["WhatsApp"])
-def get_whatsapp_logs(
-    lead_id: Optional[int] = None,
-    search:  Optional[str] = Query(None, description="Free-text search across message content, lead name/phone"),
-    delivery_status: Optional[str] = Query(None, description="Filter by delivery status: sent | delivered | read | failed"),
-    replied: Optional[str] = Query(None, description="Filter by reply status: 'true' or 'false'"),
-    year:    Optional[int] = Query(None, ge=2000, le=2100, description="Filter by sent_at year. Combine with month for a single month."),
-    month:   Optional[int] = Query(None, ge=1, le=12, description="Filter by sent_at month (1-12). Requires year."),
-    skip:    int = 0,
-    limit:   int = 100,
-    db: Session = Depends(get_db),
-):
-    """
-    Returns WhatsApp message history.
-    Shows delivery status and any replies received.
-    """
-    query = db.query(WhatsAppLog)
-    if lead_id:
-        query = query.filter(WhatsAppLog.lead_id == lead_id)
-
-    if year is not None:
-        if month is not None:
-            since = datetime(year, month, 1)
-            until = datetime(year + 1, 1, 1) if month == 12 else datetime(year, month + 1, 1)
-        else:
-            since = datetime(year, 1, 1)
-            until = datetime(year + 1, 1, 1)
-        query = query.filter(WhatsAppLog.sent_at >= since, WhatsAppLog.sent_at < until)
-
-    if search:
-        like = f"%{search}%"
-        query = query.join(Lead, WhatsAppLog.lead_id == Lead.id).filter(
-            WhatsAppLog.message_content.ilike(like) |
-            Lead.name.ilike(like) |
-            Lead.phone.ilike(like)
-        )
-
-    if delivery_status:
-        query = query.filter(WhatsAppLog.delivery_status == delivery_status)
-
-    if replied is not None:
-        query = query.filter(WhatsAppLog.replied == (replied.lower() == "true"))
-
-    total = query.count()
-    logs = query.order_by(WhatsAppLog.sent_at.desc()).offset(skip).limit(limit).all()
-    return {"total": total, "logs": [_serialize_whatsapp_log(log) for log in logs]}
-
-
-@app.get("/whatsapp-logs/export", tags=["WhatsApp"])
-def export_whatsapp_logs(
-    search:          Optional[str] = None,
-    delivery_status: Optional[str] = None,
-    replied:         Optional[str] = None,
-    db: Session = Depends(get_db),
-):
-    """Exports WhatsApp logs (respecting current search/status/replied filters) to CSV."""
-    query = db.query(WhatsAppLog)
-    if search:
-        like = f"%{search}%"
-        query = query.join(Lead, WhatsAppLog.lead_id == Lead.id).filter(
-            WhatsAppLog.message_content.ilike(like) |
-            Lead.name.ilike(like) |
-            Lead.phone.ilike(like)
-        )
-    if delivery_status:
-        query = query.filter(WhatsAppLog.delivery_status == delivery_status)
-    if replied is not None:
-        query = query.filter(WhatsAppLog.replied == (replied.lower() == "true"))
-
-    logs = query.order_by(WhatsAppLog.sent_at.desc()).all()
-    rows = [_serialize_whatsapp_log(log) for log in logs]
-    columns = ["id", "lead_id", "message_content", "delivery_status",
-               "replied", "reply_content", "sent_at", "replied_at"]
-    path = export_logs_to_csv(rows, columns, "whatsapp_logs")
-    if not path:
-        raise HTTPException(status_code=404, detail="No WhatsApp logs to export")
-    return FileResponse(path=path, media_type="text/csv", filename=os.path.basename(path))
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# SECTION 6 — CRM PIPELINE
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class PipelineUpdateRequest(BaseModel):
@@ -985,8 +753,19 @@ def add_to_dnc(req: DNCAddRequest, db: Session = Depends(get_db)):
     if not req.email and not req.phone and not req.domain:
         raise HTTPException(status_code=400, detail="Provide at least one of: email, phone, domain")
 
-    action_add(db, email=req.email, phone=req.phone, domain=req.domain, reason=req.reason)
-    return {"status": "added", "email": req.email, "phone": req.phone}
+    import dnc_service
+    result = dnc_service.block_address(db, req.email, req.phone, req.domain, req.reason or "manual")
+    return {"status": "added", "email": req.email, "phone": req.phone, **result}
+
+
+@app.post("/leads/{lead_id}/do-not-contact", tags=["DNC"])
+def block_lead(lead_id: int, db: Session = Depends(get_db)):
+    """Put one lead on the do-not-contact list: no more emails, its drafts are discarded, and it leaves Instantly."""
+    import dnc_service
+    lead = db.get(Lead, lead_id)
+    if lead is None:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    return dnc_service.block_lead(db, lead, "Blocked by admin from the lead page")
 
 
 @app.delete("/dnc", tags=["DNC"])
@@ -998,7 +777,8 @@ def remove_from_dnc(
 ):
     """Removes an entry from the DNC list by email, phone, or domain."""
     action_remove(db, email=email, phone=phone, domain=domain)
-    return {"status": "removed"}
+    import dnc_service
+    return {"status": "removed", "leads_freed": dnc_service.unblock_address(db, email, phone, domain)}
 
 
 @app.post("/dnc/scan-replies", tags=["DNC"])
@@ -1308,20 +1088,16 @@ def write_app_settings(update: AppSettingsUpdate):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# SECTION 8B — NOTIFICATIONS (bell icon: unread email/SMS replies + inbound calls)
+# SECTION 8B — NOTIFICATIONS (bell icon: unread email replies and the weekly digest)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 @app.get("/notifications", tags=["Notifications"])
 def get_notifications(db: Session = Depends(get_db)):
     """
     Returns unread items for the admin bell icon:
-      - Email replies (via Instantly webhook) not yet reviewed
-      - SMS replies (via Twilio inbound webhook) not yet reviewed
-      - Inbound callbacks (lead called our number directly) not yet reviewed
-      - Feature 7: a weekly digest — "N leads this week couldn't be
-        contacted (no email found)" — summarizing leads scraped in the
-        last 7 days that have no email on file and have had zero
-        outreach attempts of any kind.
+      - Email replies (from Instantly's reply events) not yet reviewed, with the AI's label
+        (interested, question, not now, stop, other) and its one-line summary
+      - A weekly digest: leads scraped in the last 7 days that have no email address and have not been contacted
 
     Each item includes a content preview so the admin can see what
     happened without opening the full CRM page first.
@@ -1335,56 +1111,20 @@ def get_notifications(db: Session = Depends(get_db)):
         .limit(50)
         .all()
     )
+    from database import InboundMessage
     for log in email_replies:
         lead = db.query(Lead).filter(Lead.id == log.lead_id).first()
+        inbound = db.query(InboundMessage).filter(InboundMessage.lead_id == log.lead_id, InboundMessage.kind == "reply") \
+            .order_by(InboundMessage.id.desc()).first()
         items.append({
             "type": "email_reply",
             "id": log.id,
             "lead_id": log.lead_id,
             "lead_name": lead.name if lead else "Unknown",
-            "preview": (log.reply_content or "")[:140],
+            "label": inbound.label if inbound else None,
+            "preview": (inbound.summary if inbound and inbound.summary else (log.reply_content or ""))[:140],
             "full_content": log.reply_content or "",
             "timestamp": log.replied_at.isoformat() + "Z" if log.replied_at else None,
-            "is_read": log.is_read,
-        })
-
-    sms_replies = (
-        db.query(WhatsAppLog)
-        .filter(WhatsAppLog.replied == True)
-        .order_by(WhatsAppLog.replied_at.desc())
-        .limit(50)
-        .all()
-    )
-    for log in sms_replies:
-        lead = db.query(Lead).filter(Lead.id == log.lead_id).first()
-        items.append({
-            "type": "sms_reply",
-            "id": log.id,
-            "lead_id": log.lead_id,
-            "lead_name": lead.name if lead else "Unknown",
-            "preview": (log.reply_content or "")[:140],
-            "full_content": log.reply_content or "",
-            "timestamp": log.replied_at.isoformat() + "Z" if log.replied_at else None,
-            "is_read": log.is_read,
-        })
-
-    callbacks = (
-        db.query(CallLog)
-        .filter(CallLog.outcome == CallOutcome.CALLBACK)
-        .order_by(CallLog.called_at.desc())
-        .limit(50)
-        .all()
-    )
-    for log in callbacks:
-        lead = db.query(Lead).filter(Lead.id == log.lead_id).first()
-        items.append({
-            "type": "callback",
-            "id": log.id,
-            "lead_id": log.lead_id,
-            "lead_name": lead.name if lead else "Unknown",
-            "preview": log.notes or "Lead called our number directly.",
-            "full_content": log.notes or "Lead called our number directly.",
-            "timestamp": log.called_at.isoformat() + "Z" if log.called_at else None,
             "is_read": log.is_read,
         })
 
@@ -1473,7 +1213,7 @@ def _build_weekly_no_email_digest(db: Session) -> Optional[dict]:
 @app.post("/notifications/mark-read", tags=["Notifications"])
 def mark_notifications_read(db: Session = Depends(get_db)):
     """
-    Marks every unread email reply, SMS reply, and callback as read.
+    Marks every unread email reply as read.
     Also acknowledges this week's "no email found" digest (Feature 7) —
     it stays read until the rolling 7-day window moves past this timestamp.
     Called when the admin opens the notification bell dropdown.
@@ -1502,66 +1242,6 @@ class CalculatorRequest(BaseModel):
     months:              int   = 12      # Projection period
 
 
-@app.post("/calculator", tags=["Calculator"])
-def calculate_revenue(req: CalculatorRequest):
-    """
-    Calculates revenue projections for a supplier joining ecomdropship.ai.
-
-    Logic:
-      - Wholesale revenue = units sold × wholesale price
-      - Dropship revenue  = units sold × retail price × (1 - commission%)
-      - Extra profit      = dropship revenue - wholesale revenue
-    """
-    total_units = req.num_products * req.units_per_product
-
-    # Monthly figures
-    wholesale_monthly = total_units * req.wholesale_price
-    dropship_monthly  = total_units * req.retail_price * (1 - req.platform_commission / 100)
-    extra_monthly     = dropship_monthly - wholesale_monthly
-
-    # Annual figures
-    wholesale_annual = wholesale_monthly * req.months
-    dropship_annual  = dropship_monthly  * req.months
-    extra_annual     = extra_monthly     * req.months
-
-    # Break-even (months until they've made back the "switch cost" — assumed $0 here)
-    break_even_months = 0  # No upfront cost to join
-
-    # Monthly chart data for the frontend
-    chart_data = [
-        {
-            "month": i + 1,
-            "wholesale": round(wholesale_monthly * (i + 1), 2),
-            "dropship":  round(dropship_monthly  * (i + 1), 2),
-        }
-        for i in range(req.months)
-    ]
-
-    return {
-        "monthly": {
-            "wholesale": round(wholesale_monthly, 2),
-            "dropship":  round(dropship_monthly, 2),
-            "extra":     round(extra_monthly, 2),
-        },
-        "annual": {
-            "wholesale": round(wholesale_annual, 2),
-            "dropship":  round(dropship_annual, 2),
-            "extra":     round(extra_annual, 2),
-        },
-        "break_even_months": break_even_months,
-        "chart_data": chart_data,
-        "summary": (
-            f"By joining ecomdropship.ai, you could earn an extra "
-            f"${round(extra_monthly):,}/month — that's "
-            f"${round(extra_annual):,} over {req.months} months."
-        ),
-    }
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# SECTION 10 — SCRAPING JOBS LOG
-# ═══════════════════════════════════════════════════════════════════════════════
-
 @app.get("/scraping-jobs", tags=["Leads"])
 def get_scraping_jobs(db: Session = Depends(get_db)):
     """
@@ -1588,6 +1268,7 @@ def _serialize_scraping_job(j: ScrapingJob) -> dict:
     )
     return {
         "id":            j.id,
+        "batch_id":      j.import_batch_id,
         "niche":         j.niche,
         "city":          j.city,
         "status":        j.status,
@@ -1615,7 +1296,7 @@ def _serialize_scraping_job(j: ScrapingJob) -> dict:
 # SERIALIZER HELPERS — Convert SQLAlchemy models to plain dicts for JSON response
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def _serialize_lead(lead: Lead, outreach_status: Optional[dict] = None) -> dict:
+def _serialize_lead(lead: Lead, outreach_status: Optional[dict] = None, journey: Optional[dict] = None) -> dict:
     """
     Converts a Lead SQLAlchemy object to a plain Python dict.
     FastAPI can only return JSON-serializable types, not SQLAlchemy objects directly.
@@ -1685,6 +1366,11 @@ def _serialize_lead(lead: Lead, outreach_status: Optional[dict] = None) -> dict:
         "top_gaps":                 (lead.attributes or {}).get("top_gaps", []),
         "site_findings":            {k: v for k, v in (lead.attributes or {}).items() if k.startswith("site_")},
         "import_batch_id":          lead.import_batch_id,
+        "email_check":              (lead.attributes or {}).get("email_check"),
+        "ghl":                      (lead.attributes or {}).get("ghl"),
+        "suggested_reply":          (lead.attributes or {}).get("suggested_reply"),
+        "industry_key":             (lead.attributes or {}).get("industry_key"),
+        "journey":                  journey,
 
         # Timestamps
         "scraped_at":               lead.scraped_at.isoformat() if lead.scraped_at else None,

@@ -10,7 +10,7 @@ import "./Pipeline.css";
 import { downloadFile } from "../auth";
 const API = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
-// ─── Stage config — WhatsApp → SMS ───────────────────────────────────────────
+// ─── Stage config ───────────────────────────────────────────
 const STAGES = [
   { key: "scraped",           label: "Scraped",           color: "#6b7280", icon: "ti-database"        },
   { key: "linkedin_enriched", label: "LinkedIn",          color: "#3b82f6", icon: "ti-brand-linkedin"  },
@@ -19,8 +19,6 @@ const STAGES = [
   { key: "email_sent",        label: "Email sent",        color: "#7c3aed", icon: "ti-mail"            },
   { key: "email_opened",      label: "Email opened",      color: "#fb923c", icon: "ti-mail-opened"     },
   { key: "replied",           label: "Replied",           color: "#4ade80", icon: "ti-message-check"   },
-  { key: "call_placed",       label: "Call placed",       color: "#22d3ee", icon: "ti-phone"           },
-  { key: "whatsapp_sent",     label: "SMS",               color: "#3b82f6", icon: "ti-message"         },  // WA → SMS
   { key: "demo_booked",       label: "Demo booked",       color: "#a78bfa", icon: "ti-calendar-check"  },
   { key: "onboarded",         label: "Onboarded ✅",      color: "#4ade80", icon: "ti-check-circle"    },
   { key: "rejected",          label: "Rejected",          color: "#f87171", icon: "ti-x"               },

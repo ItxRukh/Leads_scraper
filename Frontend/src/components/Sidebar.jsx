@@ -6,7 +6,7 @@ const NAV = [
   {
     section: "General",
     items: [
-      { to: "/admin/analytics", icon: "ti-chart-bar", label: "Analytics" },
+      { to: "/admin/analytics", icon: "ti-layout-dashboard", label: "Dashboard" },
     ],
   },
   {
@@ -29,6 +29,7 @@ const NAV = [
     items: [
       { to: "/admin/profiles", icon: "ti-briefcase", label: "Industry profiles" },
       { to: "/admin/dnc",      icon: "ti-ban",      label: "DNC / Blacklist" },
+      { to: "/admin/integrations", icon: "ti-plug-connected", label: "Integrations" },
       { to: "/admin/settings", icon: "ti-settings", label: "Settings" },
     ],
   },

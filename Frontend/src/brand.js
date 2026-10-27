@@ -17,8 +17,5 @@ export function migrateLegacy(saved, defaults) {
   for (const [key, olds] of Object.entries(LEGACY)) {
     if (olds.includes(out[key])) out[key] = defaults[key];
   }
-  for (const key of ["smsTemplate", "waTemplate"]) {
-    if (typeof out[key] === "string" && out[key].includes("EcomDrop")) out[key] = defaults[key] ?? out[key];
-  }
   return out;
 }

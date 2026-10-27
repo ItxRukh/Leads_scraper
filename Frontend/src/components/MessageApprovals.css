@@ -65,3 +65,7 @@
   font-size: 12px;
   color: var(--bad);
 }
+
+.ma-follow { margin: 10px 0; padding: 10px 12px; border: 1px solid var(--bdr); border-radius: 10px; background: var(--blk4); font-size: 12.5px; }
+.ma-follow summary { cursor: pointer; color: var(--muted); }
+.ma-follow-item { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--bdr2); display: flex; flex-direction: column; gap: 6px; }

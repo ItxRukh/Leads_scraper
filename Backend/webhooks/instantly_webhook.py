@@ -1,133 +1,44 @@
 """
-webhooks/instantly_webhook.py — Instantly Email Event Webhook
-==============================================================
-Instantly calls this endpoint automatically when:
-  - A lead opens our email       → event: "email_opened"
-  - A lead replies to our email  → event: "email_replied"
-  - A lead unsubscribes          → event: "unsubscribed"
+webhooks/instantly_webhook.py — Where Instantly reports what happened to our leads
+-----------------------------------------------------------------------------------
+Instantly (API v2) POSTs a JSON event here: a reply, a bounce, an unsubscribe, an email that went out...
+The Integrations page can register the webhooks for you (POST /integrations/instantly/webhooks). They send the
+header `X-Leadwren-Secret` when INSTANTLY_WEBHOOK_SECRET is set; a request without the right secret is refused.
 
-How webhooks work:
-  - We register this URL in Instantly dashboard settings
-  - When an email event happens, Instantly sends a POST request here
-  - We update our database with the event data
-  - Frontend shows real-time email tracking in the CRM
-
-Run this alongside the main app — it shares the same database.
+What each event does is in instantly_events.py.
 """
 
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
-from sqlalchemy.orm import Session
-from datetime import datetime
-from typing import Optional
+import hmac
 
-from database import (
-    EmailLog, Lead, PipelineStage,
-    SyncSessionLocal, LeadCRUD, DNCCrud
-)
-from scripts.dnc import scan_replies_for_opt_outs, check_opt_out_keywords
-from utils.domain import extract_domain
+from fastapi import APIRouter, HTTPException, Request
+from loguru import logger
+
+from config import settings
+from database import SyncSessionLocal
+from instantly_events import handle_event
 
 router = APIRouter()
 
 
-class InstantlyWebhookPayload(BaseModel):
-    """
-    Shape of the JSON body Instantly sends to our webhook.
-    (Also used to test this endpoint manually from Swagger /docs.)
-    """
-    event: str
-    lead_email: str
-    campaign_id: Optional[str] = None
-    reply_text: Optional[str] = None
-
-
-def get_db():
-    """Opens and closes a DB session for each webhook call."""
-    db = SyncSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
 @router.post("/webhooks/instantly", tags=["Webhooks"])
-async def handle_instantly_webhook(payload: InstantlyWebhookPayload):
-    """
-    Receives all email events from Instantly.
-
-    Instantly sends a JSON payload like:
-    {
-        "event": "email_opened",
-        "lead_email": "owner@example.com",
-        "campaign_id": "abc123",
-        "reply_text": "..."   ← only on reply events
-    }
-    """
-    event      = payload.event
-    lead_email = payload.lead_email
-    reply_text = payload.reply_text or ""
-
-    if not event or not lead_email:
-        raise HTTPException(status_code=400, detail="Missing event or lead_email")
-
-    db = SyncSessionLocal()
+async def instantly_webhook(request: Request):
+    secret = settings.INSTANTLY_WEBHOOK_SECRET
+    if secret and not hmac.compare_digest(request.headers.get("x-leadwren-secret", ""), secret):
+        raise HTTPException(status_code=401, detail="Wrong or missing webhook secret")
 
     try:
-        # Find the email log for this lead
-        log = (
-            db.query(EmailLog)
-            .join(Lead)
-            .filter(Lead.email == lead_email)
-            .order_by(EmailLog.sent_at.desc())
-            .first()
-        )
+        payload = await request.json()
+    except ValueError:
+        raise HTTPException(status_code=400, detail="The body is not JSON")
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="The body must be a JSON object")
 
-        if not log:
-            # Webhook received but no matching lead — log and ignore
-            return {"status": "ignored", "reason": "no matching lead found"}
-
-        lead = db.query(Lead).filter(Lead.id == log.lead_id).first()
-
-        # ── Handle each event type ────────────────────────────────────────
-        if event == "email_opened":
-            log.email_opened = True
-            log.opened_at    = datetime.utcnow()
-            LeadCRUD.update_pipeline_stage(db, lead.id, PipelineStage.EMAIL_OPENED)
-
-        elif event == "email_replied":
-            log.replied       = True
-            log.replied_at    = datetime.utcnow()
-            log.reply_content = reply_text
-            log.is_read       = False
-            LeadCRUD.update_pipeline_stage(db, lead.id, PipelineStage.REPLIED)
-
-            # Auto-add to DNC if reply contains opt-out keywords
-            if check_opt_out_keywords(reply_text):
-                domain = extract_domain(lead.website)
-                DNCCrud.add_to_dnc(
-                    db,
-                    email=lead.email,
-                    phone=lead.phone,
-                    domain=domain,
-                    reason=f"Auto opt-out from email reply: '{reply_text[:100]}'",
-                )
-                LeadCRUD.mark_do_not_contact(db, lead.id)
-
-        elif event == "unsubscribed":
-            log.unsubscribed = True
-            domain = extract_domain(lead.website)
-            DNCCrud.add_to_dnc(
-                db,
-                email=lead.email,
-                phone=lead.phone,
-                domain=domain,
-                reason="Unsubscribed via Instantly",
-            )
-            LeadCRUD.mark_do_not_contact(db, lead.id)
-
-        db.commit()
-        return {"status": "ok", "event": event, "lead_email": lead_email}
-
+    db = SyncSessionLocal()
+    try:
+        return handle_event(db, payload)
+    except Exception as e:                      # Instantly would retry a 500 forever; log it and answer
+        logger.exception(f"[instantly] could not handle event: {e}")
+        db.rollback()
+        return {"status": "error"}
     finally:
         db.close()

@@ -83,6 +83,14 @@ const NICHE_PALETTE = ["#7c3aed", "#7c3aed", "#2563eb", "#059669", "#f59e0b", "#
 function nicheColor(i) {
   return NICHE_PALETTE[i % NICHE_PALETTE.length];
 }
+// Colour of the "Where it is" badge: green for good news, red for blocked, amber for waiting on you
+const JOURNEY_TONES = {
+  ghl: "ok", replied: "ok", instantly: "info", emailing: "info", approved: "info", queued: "info", ready: "info",
+  draft: "warn", to_audit: "warn", to_check: "warn", catch_all: "warn", no_email: "warn", no_site: "warn",
+  dnc: "bad", bad_email: "bad", stopped: "muted", cold: "muted",
+};
+const journeyTone = (key) => JOURNEY_TONES[key] ?? "muted";
+
 function stageLabel(s) {
   if (!s) return "—";
   return s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
@@ -607,14 +615,12 @@ export default function Leads() {
   // ── Post-scrape "send emails?" dialog state ─────────────────────────────
   const [postScrapeOpen, setPostScrapeOpen]   = useState(false);
   const [postScrapeJob,  setPostScrapeJob]    = useState(null); // { id, niche, city, total_scraped, status }
-  const [postScrapeMode, setPostScrapeMode]   = useState("batch"); // batch | hot | custom | skip
-  const [postScrapeMinScore, setPostScrapeMinScore] = useState(40);
   const [sendingEmails,  setSendingEmails]    = useState(false);
   const [scrapeToast,    setScrapeToast]      = useState(null); // short success/failure banner text
 
-  // Live progress while the chained Audit → Verify → Send pipeline runs
+  // Live progress while the website check and email check run
   const [pipelineOpen,   setPipelineOpen]     = useState(false);
-  const [pipelineStage,  setPipelineStage]    = useState(null); // auditing | verifying_emails | sending_emails | outreach_done | outreach_failed
+  const [pipelineStage,  setPipelineStage]    = useState(null); // auditing | verifying_emails | outreach_done | outreach_failed
 
   // Polls GET /scraping-jobs every 3s until this job's status is no longer
   // "running" (or we give up after ~3 minutes). Only then do we know the
@@ -631,14 +637,13 @@ export default function Leads() {
           fetchLeads();
           fetchCharts();
           setPostScrapeJob(job);
-          setPostScrapeMode(job.total_scraped >= 5 ? "batch" : "hot");
           setPostScrapeOpen(true);
           return;
         }
 
         if (job && job.status === "failed") {
           setScraping(false);
-          setScrapeToast({ type: "error", text: "Scraping failed — check Pipeline tab for details." });
+          setScrapeToast({ type: "error", text: "Scraping failed. Check the Pipeline tab for details." });
           setTimeout(() => setScrapeToast(null), 5000);
           return;
         }
@@ -649,7 +654,7 @@ export default function Leads() {
           setScraping(false);
           fetchLeads();
           fetchCharts();
-          setScrapeToast({ type: "info", text: "Scraping is taking longer than usual — still running in the background." });
+          setScrapeToast({ type: "info", text: "Scraping is taking longer than usual and is still running in the background." });
           setTimeout(() => setScrapeToast(null), 6000);
           return;
         }
@@ -711,9 +716,9 @@ export default function Leads() {
   };
 
   // Polls GET /scraping-jobs every 2s and updates the live stage label
-  // while the chained audit → verify → send pipeline runs in the background.
+  // while the website check and email check run in the background.
   const pollPipelineStage = useCallback((jobId, attempt = 0) => {
-    const MAX_ATTEMPTS = 150; // 150 * 2s = 5 minutes — verifying/sending can take a while for big batches
+    const MAX_ATTEMPTS = 150; // 150 * 2s = 5 minutes: big batches take a while
     fetch(`${API}/scraping-jobs`)
       .then((r) => (r.ok ? r.json() : []))
       .then((jobs) => {
@@ -726,7 +731,7 @@ export default function Leads() {
             setPipelineOpen(false);
             fetchLeads();
             fetchCharts();
-            setScrapeToast({ type: "success", text: "All done — leads audited, verified, and emailed." });
+            setScrapeToast({ type: "success", text: "Done: websites checked and emails verified. Review the drafts on the Outreach queue page." });
             setTimeout(() => setScrapeToast(null), 5000);
           }, 1200); // brief pause so the user sees the final checkmark before it closes
           return;
@@ -737,11 +742,11 @@ export default function Leads() {
           return;
         }
 
-        setPipelineStage(job.status); // "auditing" | "verifying_emails" | "sending_emails" | (still "done" briefly at the start)
+        setPipelineStage(job.status); // "auditing" | "verifying_emails" | (still "done" briefly at the start)
 
         if (attempt >= MAX_ATTEMPTS) {
           setPipelineOpen(false);
-          setScrapeToast({ type: "info", text: "Still running in the background — check the Pipeline tab for progress." });
+          setScrapeToast({ type: "info", text: "Still running in the background. Check the Pipeline tab for progress." });
           setTimeout(() => setScrapeToast(null), 6000);
           return;
         }
@@ -752,20 +757,10 @@ export default function Leads() {
       });
   }, [fetchLeads, fetchCharts]);
 
-  // Confirm button on the post-scrape dialog — chains Audit → Verify → Send
-  // as one background pipeline, with a live progress animation, then closes.
+  // Confirm button on the post-scrape dialog: checks the websites, then the emails, as one
+  // background run, with live progress. Nothing is sent: drafts wait for approval.
   const handlePostScrapeConfirm = async () => {
     if (!postScrapeJob) return;
-
-    if (postScrapeMode === "skip") {
-      setPostScrapeOpen(false);
-      return;
-    }
-
-    const minScore =
-      postScrapeMode === "batch" ? 0 :
-      postScrapeMode === "hot"   ? 85 :
-      postScrapeMinScore;
 
     setSendingEmails(true);
     try {
@@ -776,8 +771,6 @@ export default function Leads() {
           job_id:    postScrapeJob.id,
           niche:     postScrapeJob.niche,
           city:      postScrapeJob.city,
-          min_score: minScore,
-          dry_run:   false,
         }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -788,7 +781,7 @@ export default function Leads() {
       pollPipelineStage(postScrapeJob.id);
     } catch (e) {
       console.error("post-scrape pipeline:", e);
-      setScrapeToast({ type: "error", text: "Couldn't start the pipeline — check backend logs." });
+      setScrapeToast({ type: "error", text: "Could not start the check. See the backend logs." });
       setTimeout(() => setScrapeToast(null), 5000);
     } finally {
       setSendingEmails(false);
@@ -1105,7 +1098,7 @@ export default function Leads() {
                 <th>Tier</th>
                 <th>Email</th>
                 <th>Decision Maker</th>
-                <th>Stage</th>
+                <th>Where it is</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -1183,21 +1176,17 @@ export default function Leads() {
                         )}
                       </td>
                       <td>
-                        <span className="stage-badge">{stageLabel(lead.pipeline_stage)}</span>
-                        {lead.outreach_reason && (
-                          <i
-                            className="ti ti-info-circle outreach-reason-icon"
-                            title={lead.outreach_reason}
-                          />
+                        {lead.journey ? (
+                          <div className="journey" title={lead.journey.next}>
+                            <span className={`journey-badge journey-badge--${journeyTone(lead.journey.key)}`}>{lead.journey.label}</span>
+                            {lead.journey.next && <div className="journey-next">{lead.journey.next}</div>}
+                          </div>
+                        ) : (
+                          <span className="stage-badge">{stageLabel(lead.pipeline_stage)}</span>
                         )}
                       </td>
                       <td>
                         <div className="row-actions">
-                          {lead.tier === "hot" && !lead.do_not_contact && (
-                            <button className="btn-primary btn-xs" title="Call this lead" onClick={() => navigate("/admin/calls")}>
-                              <i className="ti ti-phone" />
-                            </button>
-                          )}
                           {lead.email_verified && !lead.do_not_contact && (
                             <button className="btn-ghost btn-xs" title="Email this lead" onClick={() => navigate("/admin/email")}>
                               <i className="ti ti-mail" />
@@ -1331,7 +1320,7 @@ export default function Leads() {
           <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
             <div className="modal-header">
               <div>
-                <div className="modal-title">Running outreach pipeline…</div>
+                <div className="modal-title">Checking the new leads…</div>
                 <div className="modal-sub">
                   {postScrapeJob?.niche} · {postScrapeJob?.city}
                 </div>
@@ -1340,11 +1329,10 @@ export default function Leads() {
 
             <div className="modal-body">
               {[
-                { key: "auditing",         icon: "ti-target-arrow", label: "Scoring leads (audit)" },
-                { key: "verifying_emails", icon: "ti-mail-check",   label: "Verifying email addresses" },
-                { key: "sending_emails",   icon: "ti-send",         label: "Sending outreach emails" },
-              ].map((step, i) => {
-                const order = ["auditing", "verifying_emails", "sending_emails", "outreach_done"];
+                { key: "auditing",         icon: "ti-target-arrow", label: "Checking websites and scoring leads" },
+                { key: "verifying_emails", icon: "ti-mail-check",   label: "Checking email addresses" },
+              ].map((step) => {
+                const order = ["auditing", "verifying_emails", "outreach_done"];
                 const currentIdx = order.indexOf(pipelineStage);
                 const stepIdx = order.indexOf(step.key);
                 const isDone    = pipelineStage === "outreach_done" || currentIdx > stepIdx;
@@ -1382,7 +1370,7 @@ export default function Leads() {
                   marginTop: 10, display: "flex", alignItems: "center", gap: 8,
                   color: "#16a34a", fontSize: 13, fontWeight: 600,
                 }}>
-                  <i className="ti ti-circle-check" /> Done — emails sent successfully.
+                  <i className="ti ti-circle-check" /> Done. Review the drafts on the Outreach queue page.
                 </div>
               )}
 
@@ -1391,7 +1379,7 @@ export default function Leads() {
                   marginTop: 10, display: "flex", alignItems: "center", gap: 8,
                   color: "#dc2626", fontSize: 13, fontWeight: 600,
                 }}>
-                  <i className="ti ti-alert-circle" /> Something went wrong — check backend logs.
+                  <i className="ti ti-alert-circle" /> Something went wrong. Check the backend logs.
                 </div>
               )}
 
@@ -1410,7 +1398,7 @@ export default function Leads() {
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <div>
-                <div className="modal-title">Scrape complete — send emails?</div>
+                <div className="modal-title">Scrape complete</div>
                 <div className="modal-sub">
                   {postScrapeJob.total_scraped ?? 0} new lead{(postScrapeJob.total_scraped ?? 0) === 1 ? "" : "s"} added for{" "}
                   <b>{postScrapeJob.niche}</b> in <b>{postScrapeJob.city}</b>
@@ -1431,21 +1419,21 @@ export default function Leads() {
                     padding: "10px 12px", textAlign: "center",
                   }}>
                     <div style={{ fontSize: 20, fontWeight: 700 }}>{postScrapeJob.summary.total_found}</div>
-                    <div style={{ fontSize: 10.5, color: "#999" }}>Mile (found)</div>
+                    <div style={{ fontSize: 10.5, color: "#999" }}>Found</div>
                   </div>
                   <div style={{
                     flex: "1 1 100px", background: "rgba(46,204,113,0.08)", borderRadius: 10,
                     padding: "10px 12px", textAlign: "center",
                   }}>
                     <div style={{ fontSize: 20, fontWeight: 700, color: "#2ecc71" }}>{postScrapeJob.summary.total_created}</div>
-                    <div style={{ fontSize: 10.5, color: "#999" }}>Ban gayin (leads)</div>
+                    <div style={{ fontSize: 10.5, color: "#999" }}>Added as leads</div>
                   </div>
                   <div style={{
                     flex: "1 1 100px", background: "rgba(124,58,237,0.08)", borderRadius: 10,
                     padding: "10px 12px", textAlign: "center",
                   }}>
                     <div style={{ fontSize: 20, fontWeight: 700, color: "#7c3aed" }}>{postScrapeJob.summary.total_skipped}</div>
-                    <div style={{ fontSize: 10.5, color: "#999" }}>Skip hui</div>
+                    <div style={{ fontSize: 10.5, color: "#999" }}>Skipped</div>
                   </div>
                 </div>
               )}
@@ -1456,66 +1444,24 @@ export default function Leads() {
                   flexDirection: "column", gap: 3,
                 }}>
                   {postScrapeJob.summary.skip_reasons.low_rating_or_reviews > 0 && (
-                    <div>• {postScrapeJob.summary.skip_reasons.low_rating_or_reviews} — rating/reviews threshold se kam</div>
+                    <div>• {postScrapeJob.summary.skip_reasons.low_rating_or_reviews} — below the rating or review minimum</div>
                   )}
                   {postScrapeJob.summary.skip_reasons.duplicate_in_batch > 0 && (
-                    <div>• {postScrapeJob.summary.skip_reasons.duplicate_in_batch} — isi scrape mein duplicate</div>
+                    <div>• {postScrapeJob.summary.skip_reasons.duplicate_in_batch} — duplicate inside this scrape</div>
                   )}
                   {postScrapeJob.summary.skip_reasons.already_in_database > 0 && (
-                    <div>• {postScrapeJob.summary.skip_reasons.already_in_database} — pehle se database mein maujood</div>
+                    <div>• {postScrapeJob.summary.skip_reasons.already_in_database} — already in your leads</div>
                   )}
                   {postScrapeJob.summary.skip_reasons.over_max_leads_cap > 0 && (
-                    <div>• {postScrapeJob.summary.skip_reasons.over_max_leads_cap} — "Max Leads Per Scrape" limit se zyada</div>
+                    <div>• {postScrapeJob.summary.skip_reasons.over_max_leads_cap} — over the "Max Leads Per Scrape" limit</div>
                   )}
                 </div>
               )}
 
-              <div className="form-group" style={{ gap: 10, display: "flex", flexDirection: "column" }}>
-                {[
-                  { key: "batch", icon: "ti-database",     label: "This batch — all leads just scraped",
-                    sub: `Every lead from this scrape (${postScrapeJob.total_scraped ?? 0} leads), regardless of score` },
-                  { key: "hot",   icon: "ti-flame",         label: "Hot leads only",
-                    sub: "Score ≥ 85 — highest-quality matches from this batch" },
-                  { key: "custom", icon: "ti-adjustments",  label: "Custom score threshold",
-                    sub: "Pick your own minimum score" },
-                  { key: "skip",  icon: "ti-player-skip-forward", label: "Skip for now",
-                    sub: "I'll review and send manually later" },
-                ].map((opt) => (
-                  <label
-                    key={opt.key}
-                    style={{
-                      display: "flex", alignItems: "flex-start", gap: 10,
-                      padding: "10px 12px", borderRadius: 10, cursor: "pointer",
-                      border: postScrapeMode === opt.key ? "1px solid #7c3aed" : "1px solid #e8e8e8",
-                      background: postScrapeMode === opt.key ? "rgba(124,58,237,0.06)" : "transparent",
-                    }}
-                  >
-                    <input
-                      type="radio" name="postScrapeMode" value={opt.key}
-                      checked={postScrapeMode === opt.key}
-                      onChange={() => setPostScrapeMode(opt.key)}
-                      style={{ marginTop: 3 }}
-                    />
-                    <div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13.5, fontWeight: 600 }}>
-                        <i className={`ti ${opt.icon}`} style={{ color: "#7c3aed" }} /> {opt.label}
-                      </div>
-                      <div style={{ fontSize: 11.5, color: "#999", marginTop: 2 }}>{opt.sub}</div>
-                    </div>
-                  </label>
-                ))}
-
-                {postScrapeMode === "custom" && (
-                  <div className="form-group" style={{ marginTop: 4 }}>
-                    <label>Minimum score</label>
-                    <input
-                      type="number" min="0" max="145"
-                      value={postScrapeMinScore}
-                      onChange={(e) => setPostScrapeMinScore(parseInt(e.target.value) || 0)}
-                    />
-                  </div>
-                )}
-              </div>
+              <p style={{ fontSize: 13, margin: "0 0 12px" }}>
+                Next, the system checks each website for what it is missing, scores the lead, and verifies the email
+                of every Hot and Warm lead. This is tagged as <b>{postScrapeJob.niche}</b>, so the emails use that industry's profile.
+              </p>
 
               <div style={{
                 background: "rgba(124,58,237,0.06)", border: "1px solid rgba(124,58,237,0.15)",
@@ -1524,14 +1470,14 @@ export default function Leads() {
               }}>
                 <i className="ti ti-info-circle" style={{ color: "#7c3aed", marginTop: 1, flexShrink: 0 }} />
                 <span>
-                  Only leads with a verified email address will actually receive one. If no reply comes back
-                  in a few days, the system automatically follows up by SMS, then by call.
+                  Nothing is sent yet. Drafts are written for leads with a good email address and wait for your
+                  approval on the Outreach queue page. SMS and calls start in GoHighLevel once a lead replies.
                 </span>
               </div>
             </div>
 
             <div className="modal-footer">
-              <button className="btn-ghost" onClick={() => setPostScrapeOpen(false)}>Close</button>
+              <button className="btn-ghost" onClick={() => setPostScrapeOpen(false)}>Not now</button>
               <button
                 className="btn-primary"
                 onClick={handlePostScrapeConfirm}
@@ -1539,10 +1485,8 @@ export default function Leads() {
               >
                 {sendingEmails ? (
                   <><i className="ti ti-loader-2 spin" /> Starting…</>
-                ) : postScrapeMode === "skip" ? (
-                  <><i className="ti ti-x" /> Skip</>
                 ) : (
-                  <><i className="ti ti-mail" /> Send emails</>
+                  <><i className="ti ti-target-arrow" /> Check websites and emails</>
                 )}
               </button>
             </div>

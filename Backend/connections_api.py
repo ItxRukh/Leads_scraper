@@ -1,7 +1,7 @@
 """
-connections_api.py — Status of the WhatsApp extension and the email account
----------------------------------------------------------------------------
-    GET  /connections              both channels, for the status chips and warning banner
+connections_api.py — Status of the email connection (Instantly or Gmail)
+--------------------------------------------------------------------
+    GET  /connections              the email status, for the status chip and warning banner
     POST /connections/email/test   log in to the mail server now and report what happened
 """
 
@@ -18,7 +18,7 @@ router = APIRouter(prefix="/connections", tags=["Connections"])
 
 @router.get("")
 def get_connections(db: Session = Depends(get_db)):
-    return {"whatsapp": connections.whatsapp_summary(db), "email": connections.email_summary(db)}
+    return {"email": connections.email_summary(db)}
 
 
 @router.post("/email/test")

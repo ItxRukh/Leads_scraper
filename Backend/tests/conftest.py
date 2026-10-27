@@ -37,10 +37,12 @@ def seeded_db(db):
 
 
 @pytest.fixture(autouse=True)
-def fixed_settings(monkeypatch):
+def fixed_settings(monkeypatch, tmp_path):
     """Tests must not depend on the real Settings page values."""
+    import app_settings
     import queue_service
     import scoring_engine
+    monkeypatch.setattr(app_settings, "SETTINGS_FILE", str(tmp_path / "no-settings.json"))   # defaults only: SMTP, no keys
     monkeypatch.setattr(scoring_engine, "get_score_thresholds", lambda: (70, 40))
     monkeypatch.setattr(queue_service, "get_app_settings", lambda: {})
 

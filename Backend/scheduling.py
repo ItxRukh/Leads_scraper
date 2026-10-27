@@ -34,6 +34,7 @@ UTC = timezone.utc
 TIER_RANK = {"cold": 0, "warm": 1, "hot": 2}
 
 ACTIVE, COMPLETED, STOPPED = "active", "completed", "stopped"
+HANDED_OFF = "handed_off"          # the lead and its emails are in an Instantly campaign; Instantly sends them
 
 
 # ─── Sending rules (shared by all profiles) ───────────────────────────────────
@@ -174,6 +175,8 @@ def sequence_for(db: Session, lead: Lead) -> list[SequenceStep]:
 
 
 def _skip_reason(step: SequenceStep, lead: Lead) -> Optional[str]:
+    if step.channel != "email":
+        return "SMS, WhatsApp and calls are handled in GoHighLevel after a reply"
     tier = lead.tier.value if lead.tier else "cold"
     if TIER_RANK.get(tier, 0) < TIER_RANK[step.min_tier]:
         return f"lead is below the {step.min_tier} tier"

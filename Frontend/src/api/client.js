@@ -44,18 +44,6 @@ export const emailAPI = {
   getByLead: (leadId) => client.get("/email-logs", { params: { lead_id: leadId } }),
 };
 
-// ── Call Logs ──────────────────────────────────────────────
-export const callAPI = {
-  getAll: () => client.get("/call-logs"),                              // was /calls
-  getByLead: (leadId) => client.get("/call-logs", { params: { lead_id: leadId } }),
-};
-
-// ── WhatsApp Logs ──────────────────────────────────────────
-export const whatsappAPI = {
-  getAll: () => client.get("/whatsapp-logs"),                          // was /whatsapp
-  getByLead: (leadId) => client.get("/whatsapp-logs", { params: { lead_id: leadId } }),
-};
-
 // ── Analytics ──────────────────────────────────────────────
 export const analyticsAPI = {
   getOverview: () => client.get("/analytics/overview"),                // was /analytics/summary
@@ -78,9 +66,6 @@ export const pipelineAPI = {
   audit: (leadId = null) =>
     client.post("/pipeline/audit", null, { params: leadId ? { lead_id: leadId } : {} }),
   verifyEmails: () => client.post("/pipeline/verify-emails"),
-  sendEmails: (data) => client.post("/pipeline/send-emails", data),
-  vapiCalls: (data) => client.post("/pipeline/vapi-calls", data),
-  whatsapp: (data) => client.post("/pipeline/whatsapp", data),
   getSummary: () => client.get("/pipeline/summary"),
 };
 
@@ -97,10 +82,6 @@ export const notificationsAPI = {
 };
 
 // ── Calculator ─────────────────────────────────────────────
-export const calculatorAPI = {
-  calculate: (data) => client.post("/calculator", data),
-};
-
 // ── Scraping Jobs History ──────────────────────────────────
 export const scrapingJobsAPI = {
   getAll: () => client.get("/scraping-jobs"),

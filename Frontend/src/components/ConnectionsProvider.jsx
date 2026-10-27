@@ -5,7 +5,7 @@ const API = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 const POLL_MS = 15000;
 
 /**
- * Keeps the state of the WhatsApp extension and the email account up to date
+ * Keeps the state of the email connection up to date
  * (one request every 15 s, shared by the navbar chips and the warning banner).
  */
 export function ConnectionsProvider({ children }) {

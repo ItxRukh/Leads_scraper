@@ -2,9 +2,9 @@ import { useState, useEffect, useCallback } from "react";
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip,
   ResponsiveContainer, Cell, PieChart, Pie, CartesianGrid,
-  RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Legend,
+  RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
 } from "recharts";
-import { getSettings, fmtDate } from "../utils/settings";
+import { fmtDate } from "../utils/settings";
 import LeadDetailModal from "../components/LeadDetailModal";
 import "./EmailOutreach.css";
 
@@ -126,28 +126,6 @@ function MonthYearFilter({ year, month, onChange }) {
   );
 }
 
-// ─── variable chip helper ─────────────────────────────────────────────────────
-const VARS = ["name", "business", "city", "niche", "sender"];
-
-function VarChips({ onInsert }) {
-  return (
-    <div className="eo-var-chips">
-      <span className="eo-var-label">Insert:</span>
-      {VARS.map(v => (
-        <button
-          key={v}
-          type="button"
-          className="eo-var-chip"
-          onClick={() => onInsert(`{{${v}}}`)}
-          title={`Insert {{${v}}}`}
-        >
-          {`{{${v}}}`}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 // ─── main page ────────────────────────────────────────────────────────────────
 export default function EmailOutreach() {
   // data
@@ -169,54 +147,6 @@ export default function EmailOutreach() {
   const [selected, setSelected] = useState([]);
   const LIMIT = 10;
   const [viewLeadId, setViewLeadId] = useState(null);
-
-  // compose modal
-  const [composeOpen, setComposeOpen] = useState(false);
-  const [launching,   setLaunching]   = useState(false);
-
-  // ── template mode: "settings" | "custom" ─────────────────────────────────
-  const [templateMode, setTemplateMode] = useState("settings");
-  const [templateLoaded, setTemplateLoaded] = useState(false);
-
-  // campaign form
-  const [form, setForm] = useState(() => {
-    const s = getSettings();
-    return {
-      min_score:    s.warmThreshold ?? 40,
-      dry_run:      false,
-      niche:        s.defaultNiche  ?? "",
-      city:         s.defaultCity   ?? "",
-      // template fields (used in custom mode)
-      subject:      s.emailSubject  ?? "",
-      body:         s.emailBody     ?? "",
-      email_delay:  s.emailDelay    ?? 3,
-      max_per_day:  s.maxEmailsDay  ?? 100,
-    };
-  });
-
-  // Load template from Settings into form
-  const handleLoadTemplate = () => {
-    const s = getSettings();
-    // {{sender}} in the template resolves to adminName (falls back to the
-    // company name if no admin name is set in Settings → General)
-    const senderName = s.adminName?.trim() || s.companyName || "the team";
-    const withSender = (txt) => (txt ?? "").replace(/\{\{sender\}\}/g, senderName);
-    setForm(f => ({
-      ...f,
-      subject:     withSender(s.emailSubject ?? f.subject),
-      body:        withSender(s.emailBody    ?? f.body),
-      email_delay: s.emailDelay   ?? f.email_delay,
-      max_per_day: s.maxEmailsDay ?? f.max_per_day,
-    }));
-    setTemplateMode("settings");
-    setTemplateLoaded(true);
-    setTimeout(() => setTemplateLoaded(false), 2500);
-  };
-
-  // Insert variable into body textarea
-  const insertBodyVar = (tag) => {
-    setForm(f => ({ ...f, body: (f.body || "") + tag }));
-  };
 
   // ── fetch email logs ────────────────────────────────────────────────────────
   const fetchLogs = useCallback(async () => {
@@ -354,53 +284,6 @@ export default function EmailOutreach() {
 
   useEffect(() => { fetchStats(); }, [fetchStats]);
   useEffect(() => { fetchLogs(); setSelected([]); }, [fetchLogs]);
-
-  // Re-sync defaults from settings when modal opens
-  useEffect(() => {
-    if (composeOpen) {
-      const s = getSettings();
-      setForm(f => ({
-        ...f,
-        niche:       f.niche       || s.defaultNiche  || "",
-        city:        f.city        || s.defaultCity    || "",
-        min_score:   f.min_score   || s.warmThreshold  || 40,
-        email_delay: f.email_delay || s.emailDelay     || 3,
-        max_per_day: f.max_per_day || s.maxEmailsDay   || 100,
-      }));
-    }
-  }, [composeOpen]);
-
-  // ── launch outreach ─────────────────────────────────────────────────────────
-  const handleLaunch = async () => {
-    setLaunching(true);
-    try {
-      const payload = {
-        min_score: form.min_score,
-        dry_run:   form.dry_run,
-        niche:     form.niche,
-        city:      form.city,
-        // include template only in custom mode
-        ...(templateMode === "custom" && {
-          subject:      form.subject,
-          body:         form.body,
-          email_delay:  form.email_delay,
-          max_per_day:  form.max_per_day,
-        }),
-      };
-      await fetch(`${API}/pipeline/send-emails`, {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify(payload),
-      });
-      setComposeOpen(false);
-      fetchStats();
-      fetchLogs();
-    } catch (e) {
-      console.error("launch:", e);
-    } finally {
-      setLaunching(false);
-    }
-  };
 
   // ── select ──────────────────────────────────────────────────────────────────
   const toggleAll = () =>
@@ -617,9 +500,6 @@ export default function EmailOutreach() {
             <button className="btn-ghost" onClick={() => downloadFile("/email-logs/export", "email-logs.csv")}>
               <i className="ti ti-download" /> <span>Export</span>
             </button>
-            <button className="btn-primary" onClick={() => setComposeOpen(true)}>
-              <i className="ti ti-send" /> <span>Launch outreach</span>
-            </button>
           </div>
         </div>
 
@@ -747,202 +627,6 @@ export default function EmailOutreach() {
           </div>
         </div>
       </div>
-
-      {/* ══════════════════════════════════════════════════════════════════════
-          LAUNCH OUTREACH MODAL
-      ══════════════════════════════════════════════════════════════════════ */}
-      {composeOpen && (
-        <div className="modal-overlay" onClick={() => setComposeOpen(false)}>
-          <div className="modal eo-modal" onClick={e => e.stopPropagation()}>
-
-            <div className="modal-header">
-              <div>
-                <div className="modal-title">Launch email outreach</div>
-                <div className="modal-sub">Groq AI personalizes emails → sent via Instantly</div>
-              </div>
-              <button className="modal-close" onClick={() => setComposeOpen(false)}>
-                <i className="ti ti-x" />
-              </button>
-            </div>
-
-            <div className="modal-body">
-
-              {/* ── Targeting ── */}
-              <div className="eo-section-label">
-                <i className="ti ti-crosshair" /> Targeting
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Min lead score</label>
-                  <input
-                    type="number" min="0" max="100"
-                    value={form.min_score}
-                    onChange={e => setForm(f => ({ ...f, min_score: parseInt(e.target.value) || 0 }))}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Niche <span className="opt-tag">(optional)</span></label>
-                  <input
-                    placeholder="e.g. toys"
-                    value={form.niche}
-                    onChange={e => setForm(f => ({ ...f, niche: e.target.value }))}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>City <span className="opt-tag">(optional)</span></label>
-                  <input
-                    placeholder="e.g. Miami FL"
-                    value={form.city}
-                    onChange={e => setForm(f => ({ ...f, city: e.target.value }))}
-                  />
-                </div>
-              </div>
-
-              {/* ── Template ── */}
-              <div className="eo-section-label" style={{ marginTop: 20 }}>
-                <i className="ti ti-template" /> Email template
-                <div className="eo-template-actions">
-                  <button
-                    type="button"
-                    className={`eo-tpl-tab ${templateMode === "settings" ? "eo-tpl-tab--active" : ""}`}
-                    onClick={handleLoadTemplate}
-                    title="Load template saved in Settings page"
-                  >
-                    <i className="ti ti-download" />
-                    Load from Settings
-                    {templateLoaded && <span className="eo-loaded-tick"> ✓</span>}
-                  </button>
-                  <button
-                    type="button"
-                    className={`eo-tpl-tab ${templateMode === "custom" ? "eo-tpl-tab--active" : ""}`}
-                    onClick={() => setTemplateMode("custom")}
-                    title="Write a one-off custom template"
-                  >
-                    <i className="ti ti-pencil" />
-                    Custom
-                  </button>
-                </div>
-              </div>
-
-              {templateMode === "settings" ? (
-                /* ── Settings template preview ── */
-                <div className="eo-tpl-preview">
-                  <div className="eo-tpl-row">
-                    <span className="eo-tpl-lbl">Subject</span>
-                    <span className="eo-tpl-val">{form.subject || <em style={{ opacity: 0.4 }}>—</em>}</span>
-                  </div>
-                  <div className="eo-tpl-row eo-tpl-row--body">
-                    <span className="eo-tpl-lbl">Body</span>
-                    <pre className="eo-tpl-body">{form.body || <em style={{ opacity: 0.4 }}>—</em>}</pre>
-                  </div>
-                  <div className="eo-tpl-row">
-                    <span className="eo-tpl-lbl">Delay</span>
-                    <span className="eo-tpl-val">{form.email_delay}s between emails</span>
-                  </div>
-                  <div className="eo-tpl-row">
-                    <span className="eo-tpl-lbl">Daily cap</span>
-                    <span className="eo-tpl-val">{form.max_per_day} emails/day</span>
-                  </div>
-                  <div className="eo-tpl-hint">
-                    <i className="ti ti-info-circle" />
-                    Edit this template in <strong>Settings → Templates</strong>. Groq AI will personalize <code>{"{{}}"}</code> variables per lead.
-                  </div>
-                </div>
-              ) : (
-                /* ── Custom template editor ── */
-                <div className="eo-tpl-editor">
-                  <div className="form-group">
-                    <label>Subject line</label>
-                    <input
-                      placeholder="e.g. Quick question about {{business}}"
-                      value={form.subject}
-                      onChange={e => setForm(f => ({ ...f, subject: e.target.value }))}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>Email body</label>
-                    <VarChips onInsert={insertBodyVar} />
-                    <textarea
-                      className="eo-textarea"
-                      rows={7}
-                      placeholder="Hi {{name}}, I came across {{business}}..."
-                      value={form.body}
-                      onChange={e => setForm(f => ({ ...f, body: e.target.value }))}
-                    />
-                  </div>
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label>Send delay (seconds)</label>
-                      <input
-                        type="number" min="1" max="60"
-                        value={form.email_delay}
-                        onChange={e => setForm(f => ({ ...f, email_delay: parseInt(e.target.value) || 1 }))}
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>Max emails per day</label>
-                      <input
-                        type="number" min="1" max="500"
-                        value={form.max_per_day}
-                        onChange={e => setForm(f => ({ ...f, max_per_day: parseInt(e.target.value) || 1 }))}
-                      />
-                    </div>
-                  </div>
-                  <div className="eo-tpl-hint">
-                    <i className="ti ti-info-circle" />
-                    This custom template is one-off only. To save permanently, go to <strong>Settings → Templates</strong>.
-                  </div>
-                </div>
-              )}
-
-              {/* ── Dry run ── */}
-              <div style={{ marginTop: 16 }}>
-                <div className="form-group form-group--check">
-                  <label>Dry run (test mode)</label>
-                  <label className="toggle-label">
-                    <input
-                      type="checkbox"
-                      checked={form.dry_run}
-                      onChange={e => setForm(f => ({ ...f, dry_run: e.target.checked }))}
-                    />
-                    <span className="toggle-track"><span className="toggle-thumb" /></span>
-                    <span className="toggle-text">
-                      {form.dry_run ? "Test only — no emails sent" : "Live — will send real emails"}
-                    </span>
-                  </label>
-                </div>
-              </div>
-
-              <div className="modal-note">
-                <i className="ti ti-info-circle" />
-                <span>
-                  Only leads with verified emails and score ≥ {form.min_score} will be targeted.
-                  DNC list is checked automatically.
-                </span>
-              </div>
-
-            </div>{/* /modal-body */}
-
-            <div className="modal-footer">
-              <button className="btn-ghost" onClick={() => setComposeOpen(false)}>Cancel</button>
-              <button
-                className={`btn-primary ${form.dry_run ? "btn-dry" : ""}`}
-                onClick={handleLaunch}
-                disabled={launching}
-              >
-                {launching
-                  ? <><i className="ti ti-loader-2 spin" /> Launching...</>
-                  : form.dry_run
-                  ? <><i className="ti ti-flask" /> Run dry test</>
-                  : <><i className="ti ti-send" /> Launch campaign</>
-                }
-              </button>
-            </div>
-
-          </div>
-        </div>
-      )}
 
       <LeadDetailModal leadId={viewLeadId} onClose={() => setViewLeadId(null)} />
     </div>

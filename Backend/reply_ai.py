@@ -92,8 +92,24 @@ def _wants_draft(db: Session, inbound: InboundMessage, now: datetime) -> bool:
         OutreachMessage.kind == "reply", OutreachMessage.in_reply_to_id == inbound.id).first() is None
 
 
+def label_inbound(db: Session, inbound: InboundMessage, now: Optional[datetime] = None) -> Optional[str]:
+    """Label one reply and apply the label (a refusal goes on the DNC list, "not now" is revisited later).
+    Returns the label, or None when the AI could not be read; the reply is tried again later."""
+    lead = db.get(Lead, inbound.lead_id) if inbound.lead_id else None
+    result = classify_reply(lead, inbound.body or "") if lead else None
+    if result is None:
+        return None
+    inbound.label, inbound.summary = result
+    db.commit()
+    _apply_label(db, lead, inbound, inbound.label, now or sch.utcnow())
+    db.commit()
+    return inbound.label
+
+
 def _draft_answer(db: Session, lead: Lead, inbound: InboundMessage, now: datetime,
                   rng: Optional[random.Random]) -> bool:
+    if ms.send_provider() == "instantly":
+        return False        # a person answers in GoHighLevel or Instantly; the AI's suggestion goes to GoHighLevel with the lead
     s = sch.load_settings()
     rules = s.rules(inbound.channel)
     if rules.mode == "manual":
@@ -135,14 +151,8 @@ def process_new_replies(db: Session, now: Optional[datetime] = None, limit: int 
         InboundMessage.kind == "reply", InboundMessage.label.is_(None), InboundMessage.lead_id.isnot(None)
     ).order_by(InboundMessage.id).limit(limit).all()
     for inbound in unlabeled:
-        lead = db.get(Lead, inbound.lead_id)
-        result = classify_reply(lead, inbound.body or "") if lead else None
-        if result is None:
+        if label_inbound(db, inbound, now) is None:
             continue                                    # tried again next round
-        inbound.label, inbound.summary = result
-        db.commit()
-        _apply_label(db, lead, inbound, inbound.label, now)
-        db.commit()
         handled += 1
 
     recent = db.query(InboundMessage).filter(

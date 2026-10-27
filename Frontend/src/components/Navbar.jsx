@@ -8,22 +8,27 @@ import { BRAND } from "../brand";
 import { getToken, logout } from "../auth";
 
 const PAGE_TITLES = {
-  "/admin/analytics": { label: "Analytics",       sub: "Funnel, conversion and campaign stats" },
+  "/admin/analytics": { label: "Dashboard",       sub: "From import to GoHighLevel, at a glance" },
   "/admin/import":    { label: "Import leads",    sub: "Upload or paste leads, clean them and check for duplicates" },
-  "/admin/leads":     { label: "Leads",            sub: "All scraped and scored supplier leads" },
+  "/admin/leads":     { label: "Leads",            sub: "Every imported lead, its score and what the audit found" },
   "/admin/queue":     { label: "Outreach queue",   sub: "Who to contact next, and when" },
   "/admin/email":     { label: "Email outreach",   sub: "Campaigns via Instantly" },
   "/admin/pipeline":  { label: "Pipeline",         sub: "CRM — track every lead stage" },
   "/admin/dnc":       { label: "DNC / Blacklist",  sub: "Do-not-contact list management" },
   "/admin/profiles":  { label: "Industry profiles", sub: "Search, scoring and offer for each industry" },
+  "/admin/integrations": { label: "Integrations", sub: "Instantly, email verification and GoHighLevel" },
   "/admin/settings":  { label: "Settings",         sub: "API keys and platform configuration" },
 };
 
 const TYPE_META = {
   email_reply:     { icon: "ti-mail-opened",       label: "Email reply" },
-  sms_reply:       { icon: "ti-message-2",         label: "SMS reply" },
-  callback:        { icon: "ti-phone-incoming",    label: "Callback" },
   no_email_digest: { icon: "ti-mail-off",          label: "Weekly digest" },
+};
+
+const REPLY_LABELS = { interested: "Interested", question: "Has a question", not_now: "Not now", stop: "Asked to stop", other: "Other" };
+const typeText = (item) => {
+  const base = (TYPE_META[item.type] ?? { label: item.type }).label;
+  return item.label && REPLY_LABELS[item.label] ? `${base} · ${REPLY_LABELS[item.label]}` : base;
 };
 
 // Backend sends naive UTC timestamps (no "Z"/offset), which JS's Date()
@@ -171,8 +176,7 @@ export default function Navbar({ onMenuClick }) {
               <div className="nb-notif-header">Notifications</div>
               {items.length === 0 ? (
                 <div className="nb-notif-empty">
-                  No replies or callbacks yet. New activity from leads
-                  (email replies, SMS replies, callbacks) will show up here.
+                  No replies yet. When a lead answers an email, it shows up here.
                 </div>
               ) : (
                 <div className="nb-notif-list">
@@ -188,7 +192,7 @@ export default function Navbar({ onMenuClick }) {
                         <i className={`ti ${meta.icon} nb-notif-item-icon`} aria-hidden="true" />
                         <div className="nb-notif-item-body">
                           <div className="nb-notif-item-top">
-                            <span className="nb-notif-item-type">{meta.label}</span>
+                            <span className="nb-notif-item-type">{typeText(item)}</span>
                             <span className="nb-notif-item-time">{timeAgo(item.timestamp)}</span>
                           </div>
                           {item.lead_name && <div className="nb-notif-item-lead">{item.lead_name}</div>}
@@ -219,7 +223,7 @@ export default function Navbar({ onMenuClick }) {
             <div className="nb-modal-header">
               <div>
                 <div className="nb-modal-title">
-                  {(TYPE_META[activeItem.type] ?? {}).label ?? activeItem.type}
+                  {typeText(activeItem)}
                   {activeItem.lead_name ? ` — ${activeItem.lead_name}` : ""}
                 </div>
                 <div className="nb-modal-sub">{formatFullDate(activeItem.timestamp)}</div>

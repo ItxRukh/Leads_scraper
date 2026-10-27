@@ -1,7 +1,7 @@
 """
 connections.py — Is each channel working right now?
 ---------------------------------------------------
-Keeps the latest state of the WhatsApp extension and the email account so the
+Keeps the latest state of the email connection so the
 admin panel can show a green / yellow / red chip and warn when messages are
 waiting but nothing can send them.
 """
@@ -14,9 +14,9 @@ from sqlalchemy.orm import Session
 
 import email_sender
 from config import settings
+from app_settings import get_app_settings
 from database import ConnectionStatus, OutreachMessage, OutreachStepLog
 
-WHATSAPP_ONLINE_WITHIN = timedelta(seconds=90)   # the extension reports every ~30 s
 
 
 def record(db: Session, channel: str, state: Optional[str] = None, detail: Optional[dict] = None,
@@ -40,31 +40,22 @@ def record(db: Session, channel: str, state: Optional[str] = None, detail: Optio
 
 
 def _count(db: Session, channel: str, *statuses: str) -> int:
+    """Messages a person acts on (the later emails written with a first email are not counted)."""
     return db.query(func.count(OutreachMessage.id)).filter(
-        OutreachMessage.channel == channel, OutreachMessage.status.in_(statuses)
+        OutreachMessage.channel == channel, OutreachMessage.status.in_(statuses),
+        func.coalesce(OutreachMessage.kind, "step") != "followup"
     ).scalar() or 0
-
-
-def whatsapp_summary(db: Session, now: Optional[datetime] = None) -> dict:
-    now = now or datetime.utcnow()
-    row = db.get(ConnectionStatus, "whatsapp")
-    seen = row.last_seen if row else None
-    fresh = bool(seen and now - seen <= WHATSAPP_ONLINE_WITHIN)
-    state = row.state if (row and fresh) else "offline"     # offline = no signal lately
-    return {
-        "state": state,                     # connected | loading | logged_out | offline
-        "online": state == "connected",
-        "last_seen_seconds": int((now - seen).total_seconds()) if seen else None,
-        "number": (row.detail or {}).get("number") if row else None,
-        "waiting": _count(db, "whatsapp", "approved", "claimed"),      # approved, not sent yet
-        "to_approve": _count(db, "whatsapp", "draft"),
-    }
 
 
 def email_summary(db: Session, now: Optional[datetime] = None) -> dict:
     now = now or datetime.utcnow()
     row = db.get(ConnectionStatus, "email")
-    configured = email_sender.is_configured()
+    instantly = get_app_settings().get("sendProvider") == "instantly"
+    if instantly:
+        import instantly_client, instantly_handoff
+        configured = instantly_client.configured() and bool(instantly_handoff.campaign_id())
+    else:
+        configured = email_sender.is_configured()
     if not configured:
         state = "not_configured"
     elif row and row.last_error:
@@ -77,7 +68,8 @@ def email_summary(db: Session, now: Optional[datetime] = None) -> dict:
     return {
         "state": state,                     # not_configured | unknown | ok | error
         "online": state in ("ok", "unknown"),
-        "address": email_sender.sender_address() if configured else None,
+        "provider": "instantly" if instantly else "smtp",
+        "address": ("Instantly campaign" if instantly else email_sender.sender_address()) if configured else None,
         "last_ok": row.last_ok.isoformat() + "Z" if row and row.last_ok else None,
         "last_error": row.last_error if row else None,
         "sent_today": db.query(func.count(OutreachStepLog.id)).filter(

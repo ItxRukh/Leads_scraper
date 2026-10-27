@@ -52,39 +52,26 @@ class Settings(BaseSettings):
 
     # ── Email Outreach (Instantly) ──────────────────────────────────────────
     INSTANTLY_API_KEY: str = ""
-    INSTANTLY_BASE_URL: str = "https://api.instantly.ai/api/v1"
+    INSTANTLY_BASE_URL: str = "https://api.instantly.ai/api/v2"
+    INSTANTLY_CAMPAIGN_ID: str = ""            # the campaign leads are added to (can also be chosen on the Integrations page)
+    INSTANTLY_WEBHOOK_SECRET: str = ""         # sent by Instantly in the X-Leadwren-Secret header; empty = not checked
     EMAILS_PER_DAY: int = 50
+
+    # ── Email verification (paid check, after the free syntax / MX check) ───
+    MILLIONVERIFIER_API_KEY: str = ""
+    MILLIONVERIFIER_BASE_URL: str = "https://api.millionverifier.com/api/v3"
+
+    # ── GoHighLevel: Inbound Webhook URL of the workflow that receives interested leads ──
+    GHL_WEBHOOK_URL: str = ""
 
     # ── AI Provider (Groq) ──────────────────────────────────────────────────
     GROQ_API_KEY: str = ""
     GROQ_BASE_URL: str = "https://api.groq.com/openai/v1"
     GROQ_MODEL: str = "llama-3.3-70b-versatile"
 
-    # ── Voice Calls (Twilio custom agent) ──────────────────────────────────
-    VAPI_API_KEY: str = ""
-    VAPI_BASE_URL: str = "https://api.vapi.ai"
-
-    # ── Text-to-Speech (ElevenLabs) — used by the custom voice agent ───────
-    ELEVENLABS_API_KEY: str = ""
-
-    # ── Groq model just for the voice agent (faster = less call latency) ───
-    GROQ_VOICE_MODEL: str = "llama-3.1-8b-instant"
-
-    # ── Public base URL for this backend (ngrok URL in dev, real domain in prod)
-    # Used so Twilio knows where to send webhooks / connect WebSocket streams.
+    # ── Public address of this backend (a domain, or an ngrok URL while testing). Instantly's webhooks and the
+    # email open-tracking pixel need an address the internet can reach.
     PUBLIC_BASE_URL: str = ""
-
-    # ── Public-facing landing page (the supplier-facing site with the
-    # revenue calculator). This is DIFFERENT from PUBLIC_BASE_URL above —
-    # that one is the backend API's ngrok URL, this is the actual website
-    # link we put in emails/SMS for leads to visit.
-    PUBLIC_SITE_URL: str = ""   # public website to link in messages; set when there is one
-
-    # ── SMS + Calls (Twilio) ────────────────────────────────────────────────
-    TWILIO_ACCOUNT_SID: str = ""
-    TWILIO_AUTH_TOKEN: str = ""
-    TWILIO_PHONE_NUMBER: str = ""
-    TWILIO_WHATSAPP_NUMBER: str = "whatsapp:+14155238886"
 
     # ── Claude (Anthropic) — for email writing ──────────────────────────────
     ANTHROPIC_API_KEY: str = ""

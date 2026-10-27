@@ -5,7 +5,7 @@ Runs inside the API process (APScheduler), nothing separate to start.
 
 Every DISPATCHER_INTERVAL_SECONDS (default 60):
   * stop the sequence of leads that replied or opted out
-  * hand WhatsApp messages stuck with the extension back to the approved pile
+  * put emails that were picked up but never finished back in the approved pile
   * read new replies (what does the lead want?) and write answer drafts
   * contact "not now" leads again when their revisit date has come
   * write messages for steps that are due (channels in Assisted or Auto mode)
@@ -14,8 +14,8 @@ Every DISPATCHER_INTERVAL_SECONDS (default 60):
 Every INBOX_POLL_MINUTES (default 3): read replies and bounces from the inbox.
 
 Nothing is sent without approval unless the channel is set to Auto in the
-Outreach queue's sending rules. WhatsApp is sent by the Chrome extension, which
-asks the API for its messages; calls are done by hand for now.
+Outreach queue's sending rules. Email is handed to Instantly (or sent over SMTP). SMS and calls
+are not made here: they happen in GoHighLevel once a lead has replied.
 """
 
 from apscheduler.schedulers.background import BackgroundScheduler

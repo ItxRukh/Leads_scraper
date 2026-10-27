@@ -57,7 +57,7 @@ function formatDate(d) {
 
 /**
  * Shared "eye view" modal — shows full details for a single lead.
- * Used from Leads, EmailOutreach, CallLogs, and WhatsApp pages so the
+ * Used from the Leads and Email outreach pages so the
  * eye icon actually does something everywhere instead of being dead
  * (Leads.jsx) or completely unwired (the other three pages).
  *
@@ -70,10 +70,14 @@ export default function LeadDetailModal({ leadId, onClose }) {
   const [lead,    setLead]    = useState(null);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState("");
-  // Feature 5 — Manual "Contact Now" buttons: per-channel busy/result state
-  // so each button (email/sms/call) shows its own spinner + outcome
-  // independently, without needing three separate booleans.
-  const [contactState, setContactState] = useState({}); // { email: "sending"|"sent"|"error", sms: ..., call: ... }
+  const [ghlBusy, setGhlBusy] = useState(false);
+  const [ghlNote, setGhlNote] = useState("");
+  const [replyText, setReplyText] = useState("");
+  const [editing, setEditing] = useState(false);
+  const [sendBusy, setSendBusy] = useState(false);
+  const [sendNote, setSendNote] = useState({ ok: true, text: "" });
+  const [blockBusy, setBlockBusy] = useState(false);
+  const [blockNote, setBlockNote] = useState("");
 
   useEffect(() => {
     if (!leadId) return;
@@ -81,50 +85,53 @@ export default function LeadDetailModal({ leadId, onClose }) {
     setLoading(true);
     setError("");
     setLead(null);
-    setContactState({});
+    setGhlNote("");
+    setBlockNote("");
+    setEditing(false);
+    setSendNote({ ok: true, text: "" });
 
     fetch(`${API}/leads/${leadId}`)
       .then((res) => {
         if (!res.ok) throw new Error(res.status === 404 ? "Lead not found" : `HTTP ${res.status}`);
         return res.json();
       })
-      .then((data) => { if (!cancelled) setLead(data); })
+      .then((data) => { if (!cancelled) { setLead(data); setReplyText(data.reply?.suggestion ?? ""); } })
       .catch((e) => { if (!cancelled) setError(e.message || "Failed to load lead"); })
       .finally(() => { if (!cancelled) setLoading(false); });
 
     return () => { cancelled = true; };
   }, [leadId]);
 
-  async function handleContactNow(channel) {
-    if (!lead) return;
-    setContactState((s) => ({ ...s, [channel]: "sending" }));
-    const endpoint = {
-      email: "/pipeline/send-emails",
-      sms:   "/pipeline/whatsapp",
-      call:  "/pipeline/vapi-calls",
-    }[channel];
-    const body = channel === "email"
-      ? { lead_id: lead.id, dry_run: false }
-      : channel === "sms"
-      ? { lead_id: lead.id, trigger: "manual", dry_run: false }
-      : { lead_id: lead.id, dry_run: false };
-
+  async function sendReply() {
+    if (!window.confirm(`Send this reply to ${lead.name} now, through Instantly?`)) return;
+    setSendBusy(true);
+    setSendNote({ ok: true, text: "" });
     try {
-      const res = await fetch(`${API}${endpoint}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+      const res = await fetch(`${API}/leads/${lead.id}/reply`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: replyText }),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setContactState((s) => ({ ...s, [channel]: "sent" }));
-    } catch {
-      setContactState((s) => ({ ...s, [channel]: "error" }));
-    }
-    // Reset the "sent"/"error" pill back to idle after a few seconds so the
-    // button is clickable again for another send.
-    setTimeout(() => {
-      setContactState((s) => ({ ...s, [channel]: undefined }));
-    }, 4000);
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) { setSendNote({ ok: false, text: body.detail || "Could not send the reply." }); return; }
+      const fresh = await fetch(`${API}/leads/${lead.id}`).then((r) => r.json());
+      setLead(fresh);
+      setEditing(false);
+    } catch { setSendNote({ ok: false, text: "Network error." }); } finally { setSendBusy(false); }
+  }
+
+  async function blockLead() {
+    if (!window.confirm(`Put ${lead.name} on the do-not-contact list? Nothing more will be sent to them, and they are removed from the Instantly campaign.`)) return;
+    setBlockBusy(true);
+    setBlockNote("");
+    try {
+      const res = await fetch(`${API}/leads/${lead.id}/do-not-contact`, { method: "POST" });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) { setBlockNote(body.detail || "Could not block this lead."); return; }
+      const note = { removed: "Removed from the Instantly campaign.", not_in_instantly: "", not_configured: "Instantly is not set up, so nothing to remove there." }[body.instantly]
+        ?? `Blocked here, but Instantly could not remove it (${body.instantly}). Remove it in Instantly by hand.`;
+      setBlockNote(`Done. ${note}`.trim());
+      const fresh = await fetch(`${API}/leads/${lead.id}`).then((r) => r.json());
+      setLead(fresh);
+    } catch { setBlockNote("Network error."); } finally { setBlockBusy(false); }
   }
 
   if (!leadId) return null;
@@ -170,6 +177,14 @@ export default function LeadDetailModal({ leadId, onClose }) {
                 {lead.do_not_contact && <span className="ld-dnc-badge"><i className="ti ti-ban" /> Do not contact</span>}
               </div>
 
+              {lead.journey && (
+                <div className="ld-section ld-journey">
+                  <div className="ld-section-label">Where this lead is</div>
+                  <div className="ld-journey-label">{lead.journey.label}</div>
+                  {lead.journey.next && <div className="ld-journey-next">{lead.journey.next}</div>}
+                </div>
+              )}
+
               <div className="ld-score-row">
                 <div className="ld-score-num">{lead.final_score ?? 0}</div>
                 <div className="ld-score-sub">
@@ -210,7 +225,7 @@ export default function LeadDetailModal({ leadId, onClose }) {
                     <span className="ld-field-val">{lead.city ?? "—"}</span>
                   </div>
                   <div className="ld-field">
-                    <span className="ld-field-label">Niche</span>
+                    <span className="ld-field-label">Industry</span>
                     <span className="ld-field-val">{lead.niche ?? "—"}</span>
                   </div>
                   <div className="ld-field ld-field-wide">
@@ -228,57 +243,12 @@ export default function LeadDetailModal({ leadId, onClose }) {
                 </div>
               </div>
 
-              <div className="ld-section">
-                <div className="ld-section-label">Contact now</div>
-                {lead.do_not_contact ? (
-                  <div className="ld-incomplete-banner">
-                    <i className="ti ti-ban" />
-                    <span>This lead is on the Do-Not-Contact list — manual outreach is disabled.</span>
-                  </div>
-                ) : (
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    {[
-                      { channel: "email", icon: "ti-mail",         label: "Email now", enabled: !!lead.email },
-                      { channel: "sms",   icon: "ti-message-2",    label: "SMS now",   enabled: !!lead.phone },
-                      { channel: "call",  icon: "ti-phone-call",   label: "Call now",  enabled: !!lead.phone },
-                    ].map(({ channel, icon, label, enabled }) => {
-                      const state = contactState[channel];
-                      return (
-                        <button
-                          key={channel}
-                          className="btn-ghost"
-                          disabled={!enabled || state === "sending"}
-                          onClick={() => handleContactNow(channel)}
-                          title={enabled ? "" : `No ${channel === "email" ? "email" : "phone"} on file for this lead`}
-                          style={{ display: "flex", alignItems: "center", gap: 6 }}
-                        >
-                          {state === "sending" ? (
-                            <><i className="ti ti-loader-2" /> Sending…</>
-                          ) : state === "sent" ? (
-                            <><i className="ti ti-circle-check" style={{ color: "#4ade80" }} /> Sent</>
-                          ) : state === "error" ? (
-                            <><i className="ti ti-alert-triangle" style={{ color: "#f87171" }} /> Failed — retry</>
-                          ) : (
-                            <><i className={`ti ${icon}`} /> {label}</>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-                <div style={{ fontSize: 11, color: "#888", marginTop: 6 }}>
-                  Bypasses automatic scoring/timing rules and sends right away.
-                </div>
-              </div>
-
               {lead.outreach_status && (
                 <div className="ld-section">
                   <div className="ld-section-label">Outreach status</div>
                   <div className="ld-outreach-list">
                     {[
                       { key: "email", label: "Email", icon: "ti-mail" },
-                      { key: "sms",   label: "SMS",   icon: "ti-message-2" },
-                      { key: "call",  label: "Call",  icon: "ti-phone" },
                     ].map(({ key, label, icon }) => {
                       const ch = lead.outreach_status[key];
                       if (!ch) return null;
@@ -335,6 +305,77 @@ export default function LeadDetailModal({ leadId, onClose }) {
                 </div>
               )}
 
+              <div className="ld-section">
+                <div className="ld-section-label">Email and GoHighLevel</div>
+                <div className="ld-field">
+                  <span className="ld-field-label">Email check</span>
+                  <span className="ld-field-val">
+                    {lead.email_check ? `${lead.email_check.status} (${lead.email_check.provider}${lead.email_check.detail ? `: ${lead.email_check.detail}` : ""})` : "Not checked yet"}
+                  </span>
+                </div>
+                <div className="ld-field">
+                  <span className="ld-field-label">GoHighLevel</span>
+                  <span className="ld-field-val">
+                    {lead.ghl ? `${lead.ghl.status}${lead.ghl.error ? `: ${lead.ghl.error}` : ""}` : "Not sent"}
+                  </span>
+                </div>
+                <button className="btn-ghost" disabled={ghlBusy || lead.do_not_contact} onClick={async () => {
+                  setGhlBusy(true); setGhlNote("");
+                  try {
+                    const res = await fetch(`${API}/integrations/ghl/send/${lead.id}`, { method: "POST" });
+                    const body = await res.json().catch(() => ({}));
+                    setGhlNote(res.ok ? (body.status === "sent" ? "Sent to GoHighLevel." : `Not sent: ${body.error}`) : (body.detail || "Could not send."));
+                    if (res.ok) setLead({ ...lead, ghl: { status: body.status, error: body.error } });
+                  } catch { setGhlNote("Network error."); } finally { setGhlBusy(false); }
+                }}>
+                  <i className="ti ti-send" /> Send to GoHighLevel now
+                </button>
+                {ghlNote && <div className="ld-fix">{ghlNote}</div>}
+              </div>
+
+              {lead.reply && (
+                <div className="ld-section">
+                  <div className="ld-section-label">Their reply{lead.reply.label ? ` (${lead.reply.label.replace("_", " ")})` : ""}</div>
+                  <div className="ld-audit-text">{lead.reply.text}</div>
+
+                  {lead.reply.answered ? (
+                    <div className="ld-fix">You answered on {formatDate(lead.reply.sent?.at)}. Continue the conversation in Instantly.</div>
+                  ) : lead.reply.label === "stop" ? (
+                    <div className="ld-fix">They asked us to stop. Nothing can be sent.</div>
+                  ) : (
+                    <>
+                      <div className="ld-section-label" style={{ marginTop: 12 }}>
+                        {lead.reply.suggestion ? "Suggested reply (from the knowledge base)" : "Your reply"}
+                      </div>
+                      {editing || !lead.reply.suggestion ? (
+                        <textarea className="ld-reply-box" rows={7} value={replyText} onChange={(e) => setReplyText(e.target.value)}
+                          placeholder="Write your reply…" />
+                      ) : (
+                        <div className="ld-audit-text">{replyText}</div>
+                      )}
+                      <div className="ld-reply-actions">
+                        {lead.reply.suggestion && (
+                          <button className="btn-ghost" disabled={sendBusy}
+                            onClick={() => { if (editing) setReplyText(lead.reply.suggestion); setEditing(!editing); }}>
+                            <i className={`ti ${editing ? "ti-rotate" : "ti-pencil"}`} /> {editing ? "Undo my edits" : "Edit"}
+                          </button>
+                        )}
+                        <button className="btn-primary" disabled={sendBusy || !lead.reply.can_send || !replyText.trim()} onClick={sendReply}>
+                          <i className="ti ti-send" /> {sendBusy ? "Sending…" : "Send now"}
+                        </button>
+                        {lead.reply.unibox_url && (
+                          <a className="biz-link" href={lead.reply.unibox_url} target="_blank" rel="noreferrer">Open in Instantly</a>
+                        )}
+                      </div>
+                      {!lead.reply.can_send && (
+                        <div className="ld-fix">Sending from here needs the reply details from Instantly. For this one, answer in Instantly.</div>
+                      )}
+                      {sendNote.text && <div className={sendNote.ok ? "ld-fix" : "ld-error-text"}>{sendNote.text}</div>}
+                    </>
+                  )}
+                </div>
+              )}
+
               {lead.audit_summary && (
                 <div className="ld-section">
                   <div className="ld-section-label">Audit summary</div>
@@ -361,6 +402,12 @@ export default function LeadDetailModal({ leadId, onClose }) {
 
         <div className="modal-footer">
           <button className="btn-ghost" onClick={onClose}>Close</button>
+          {lead && !lead.do_not_contact && (
+            <button className="btn-ghost ld-danger" disabled={blockBusy} onClick={blockLead}>
+              <i className="ti ti-ban" /> {blockBusy ? "Blocking…" : "Do not contact"}
+            </button>
+          )}
+          {blockNote && <span className="ld-fix">{blockNote}</span>}
           {lead && (
             <button
               className="btn-primary"

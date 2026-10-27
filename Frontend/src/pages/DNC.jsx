@@ -213,7 +213,7 @@ export default function DNC() {
           <div>
             <div className="scan-title">Auto scan replies</div>
             <div className="scan-sub">
-              Scans all email &amp; WhatsApp replies for opt-out keywords
+              Scans all email replies for opt-out keywords
               (stop, remove, unsubscribe, not interested…) and auto-adds them to DNC.
             </div>
           </div>
@@ -386,7 +386,7 @@ export default function DNC() {
                 <label>Email address</label>
                 <input
                   type="email"
-                  placeholder="e.g. supplier@example.com"
+                  placeholder="e.g. owner@example.com"
                   value={form.email}
                   onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
                 />

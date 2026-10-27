@@ -22,9 +22,6 @@ export const SETTINGS_DEFAULTS = {
   emailSubject:  "A quick idea for {{business}}",
   emailBody:     "Hi {{name}},\n\nI came across {{business}} and wanted to reach out...\n\nWould love to connect!\n\nBest,\n{{sender}}",
 
-  // WhatsApp template
-  waTemplate:    "Hi {{name}}, this is {{sender}} from " + BRAND.displayName + ". I wanted to follow up on my earlier email regarding {{business}}. Would love to chat!",
-
   // Outreach defaults
   emailDelay:    3,
   maxEmailsDay:  100,
@@ -62,7 +59,7 @@ export function fillTemplate(template, vars = {}) {
 /**
  * Format an ISO date string in the timezone chosen on Settings → General
  * (falls back to UTC / the browser default if the saved zone is invalid).
- * Used by CallLogs, EmailOutreach, WhatsApp, Pipeline, and DNC so every
+ * Used by EmailOutreach, Pipeline, and DNC so every
  * timestamp shown in the app reflects the same admin-selected timezone.
  */
 export function fmtDate(iso, opts = {}) {

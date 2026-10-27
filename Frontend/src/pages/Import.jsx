@@ -52,6 +52,47 @@ function AuditSummary({ s }) {
   );
 }
 
+function VerifySummary({ v }) {
+  const done = v.checked >= v.to_check;
+  return (
+    <div className="im-audit">
+      <p className="im-help">
+        {done ? `Email check finished (${v.provider === "free" ? "free checks only" : v.provider}).`
+              : `Checking email addresses… ${v.checked} of ${v.to_check} done.`}
+        {v.provider === "free" && " Add MILLIONVERIFIER_API_KEY in Backend/.env to also check that each mailbox exists."}
+      </p>
+      <div className="im-chips">
+        <Chip tone="ok" label="Valid" value={v.valid} />
+        <Chip tone="bad" label="Invalid" value={v.invalid} />
+        <Chip tone="warn" label="Catch-all" value={v.catch_all} />
+        <Chip tone="neutral" label="Unknown" value={v.unknown} />
+        <Chip tone="neutral" label="No email" value={v.no_email} />
+      </div>
+    </div>
+  );
+}
+
+function Steps({ p }) {
+  const auditDone = p.audit.audited >= p.audit.total;
+  const verifyDone = auditDone && p.verify.checked >= p.verify.to_check;
+  const step = (done, active, text) => (
+    <li className={done ? "im-step im-step--done" : active ? "im-step im-step--active" : "im-step"}>
+      <i className={`ti ${done ? "ti-circle-check" : active ? "ti-loader-2" : "ti-circle"}`} /> {text}
+    </li>
+  );
+  return (
+    <>
+      <ul className="im-steps">
+        {step(auditDone, !auditDone, `Checking websites (${p.audit.audited} of ${p.audit.total})`)}
+        {step(verifyDone, auditDone && !verifyDone, `Checking email addresses (${p.verify.checked} of ${p.verify.to_check})`)}
+      </ul>
+      {auditDone && <AuditSummary s={p.audit} />}
+      {verifyDone && <VerifySummary v={p.verify} />}
+      {verifyDone && <p className="im-help">All done. Hot and Warm leads with a good address now get their emails written; approve them on the <Link to="/admin/queue">Outreach queue</Link>. Nothing is sent before you approve.</p>}
+    </>
+  );
+}
+
 export default function Import() {
   const [industries, setIndustries] = useState([]);
   const [tab, setTab] = useState("file");
@@ -70,7 +111,7 @@ export default function Import() {
   const [batches, setBatches] = useState([]);
   const [batchError, setBatchError] = useState("");
   const dropRef = useRef(null);
-  const [auditStatus, setAuditStatus] = useState({});     // batch id -> {total, audited, hot, warm, cold, incomplete}
+  const [pipeline, setPipeline] = useState({});      // batch id -> {stage, audit, verify}
   const timers = useRef({});
 
   const labelFor = useMemo(() => Object.fromEntries(industries.map((i) => [i.key, i.label])), [industries]);
@@ -79,27 +120,27 @@ export default function Import() {
     fetch(`${API}/imports`).then((r) => (r.ok ? r.json() : [])).then(setBatches).catch(() => {});
   }, []);
 
-  const pollAudit = useCallback((batchId) => {
+  const pollPipeline = useCallback((batchId) => {
     clearInterval(timers.current[batchId]);
     const tick = async () => {
-      const res = await fetch(`${API}/imports/${batchId}/audit-status`).catch(() => null);
+      const res = await fetch(`${API}/imports/${batchId}/pipeline`).catch(() => null);
       if (!res?.ok) return;
       const status = await res.json();
-      setAuditStatus((prev) => ({ ...prev, [batchId]: status }));
-      if (status.audited >= status.total) { clearInterval(timers.current[batchId]); loadBatches(); }
+      setPipeline((prev) => ({ ...prev, [batchId]: status }));
+      if (status.stage === "done") { clearInterval(timers.current[batchId]); loadBatches(); }
     };
     tick();
     timers.current[batchId] = setInterval(tick, 3000);
   }, [loadBatches]);
 
-  useEffect(() => () => Object.values(timers.current).forEach(clearInterval), []);
-
-  async function startAudit(batchId) {
+  const startPipeline = useCallback(async (batchId) => {
     setBatchError("");
-    const res = await fetch(`${API}/imports/${batchId}/audit`, { method: "POST" });
+    const res = await fetch(`${API}/imports/${batchId}/run`, { method: "POST" });
     if (!res.ok) { setBatchError(await readError(res)); return; }
-    pollAudit(batchId);
-  }
+    pollPipeline(batchId);
+  }, [pollPipeline]);
+
+  useEffect(() => () => Object.values(timers.current).forEach(clearInterval), []);
 
   useEffect(() => {
     fetch(`${API}/imports/industries`).then((r) => (r.ok ? r.json() : [])).then(setIndustries).catch(() => {});
@@ -160,7 +201,9 @@ export default function Import() {
         }),
       });
       if (!res.ok) throw new Error(await readError(res));
-      setResult(await res.json());
+      const done = await res.json();
+      setResult(done);
+      if (done.imported > 0) startPipeline(done.batch_id);
       setPreview(null);
       setFile(null);
       setText("");
@@ -261,16 +304,9 @@ export default function Import() {
             Skipped: {result.duplicates} duplicate · {result.on_dnc} on the Do-Not-Contact list · {result.invalid} invalid
             {result.skipped ? ` · ${result.skipped} without email` : ""}.
           </p>
-          {result.imported > 0 && (
-            auditStatus[result.batch_id]
-              ? <AuditSummary s={auditStatus[result.batch_id]} />
-              : <p className="im-help">Next: check each lead's website for what it is missing (booking, chat, click-to-call...) and score it.</p>
-          )}
+          {pipeline[result.batch_id] && <Steps p={pipeline[result.batch_id]} />}
           <div className="im-actions">
-            {result.imported > 0 && !auditStatus[result.batch_id] && (
-              <button className="im-btn" onClick={() => startAudit(result.batch_id)}>Check websites and score these leads</button>
-            )}
-            <Link className={auditStatus[result.batch_id] ? "im-btn" : "im-btn im-btn--ghost"} to="/admin/leads">View leads</Link>
+            <Link className="im-btn" to="/admin/leads">View leads</Link>
           </div>
         </section>
       )}
@@ -363,12 +399,12 @@ export default function Import() {
 
       {/* ── earlier imports ───────────────────────────────────────────── */}
       <section className="im-card">
-        <div className="im-card-head"><h2>Earlier imports</h2></div>
+        <div className="im-card-head"><h2>Earlier imports</h2><span className="im-help">Google Maps scrapes appear here too.</span></div>
         {batchError && <div className="im-error" role="alert">{batchError}</div>}
         {batches.length === 0 ? <p className="im-help">Nothing imported yet.</p> : (
           <div className="im-table-wrap">
             <table className="im-table">
-              <thead><tr><th>Name</th><th>Source</th><th>Date</th><th>Imported</th><th>In leads now</th><th>Audited</th><th>Skipped</th><th /></tr></thead>
+              <thead><tr><th>Name</th><th>Source</th><th>Date</th><th>Imported</th><th>In leads now</th><th>Checked</th><th>Skipped</th><th /></tr></thead>
               <tbody>
                 {batches.map((b) => (
                   <tr key={b.id}>
@@ -378,11 +414,11 @@ export default function Import() {
                     <td>{b.imported}</td>
                     <td>{b.leads_now}</td>
                     <td>
-                      {auditStatus[b.id] && auditStatus[b.id].audited < auditStatus[b.id].total
-                        ? `${auditStatus[b.id].audited} of ${auditStatus[b.id].total}…`
+                      {pipeline[b.id] && pipeline[b.id].stage !== "done"
+                        ? (pipeline[b.id].stage === "audit" ? "Checking websites…" : "Checking emails…")
                         : `${b.audited} of ${b.leads_now}`}
-                      {b.audited < b.leads_now && !auditStatus[b.id] && (
-                        <button className="im-link im-link--pad" onClick={() => startAudit(b.id)}>Audit</button>
+                      {b.audited < b.leads_now && !pipeline[b.id] && (
+                        <button className="im-link im-link--pad" onClick={() => startPipeline(b.id)}>Check now</button>
                       )}
                     </td>
                     <td>{b.duplicates + b.on_dnc + b.invalid}</td>

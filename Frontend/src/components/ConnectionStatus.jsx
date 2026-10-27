@@ -59,7 +59,7 @@ function EmailPanel({ e, refresh }) {
 
   return (
     <>
-      <div className="cx-title">Email account</div>
+      <div className="cx-title">{e.provider === "instantly" ? "Email sending (Instantly)" : "Email account"}</div>
       <div className="cx-row"><span>Status</span><b>{EMAIL_LOOK[e.state]?.label}</b></div>
       {e.address && <div className="cx-row"><span>Account</span><b>{e.address}</b></div>}
       <div className="cx-row"><span>Sent today</span><b>{e.sent_today}</b></div>
@@ -75,13 +75,15 @@ function EmailPanel({ e, refresh }) {
       )}
       {e.state === "not_configured" && (
         <p className="cx-hint">
-          Add EMAIL_ADDRESS and EMAIL_APP_PASSWORD (a Gmail App Password) to Backend/.env, then restart the backend.
+          {e.provider === "instantly"
+            ? "Open Integrations: add INSTANTLY_API_KEY to Backend/.env and choose the Instantly campaign."
+            : "Add EMAIL_ADDRESS and EMAIL_APP_PASSWORD (a Gmail App Password) to Backend/.env, then restart the backend."}
         </p>
       )}
       {e.last_error && <p className="cx-hint cx-hint--bad">{e.last_error}</p>}
       {result?.ok && <p className="cx-hint cx-hint--ok">Sending and reading replies both work.</p>}
       {problem && <p className="cx-hint cx-hint--bad">{problem}</p>}
-      {e.state !== "not_configured" && (
+      {e.state !== "not_configured" && e.provider !== "instantly" && (
         <div className="cx-actions">
           <button className="btn-ghost" onClick={test} disabled={testing}>
             {testing ? <><i className="ti ti-loader-2 spin" /> Testing…</> : <><i className="ti ti-plug-connected" /> Test connection</>}

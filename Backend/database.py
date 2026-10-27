@@ -540,6 +540,7 @@ class ScrapingJob(Base):
     skipped_over_cap           = Column(Integer, default=0) # cut off by the "Max Leads Per Scrape" setting
     started_at     = Column(DateTime, default=datetime.utcnow)
     completed_at   = Column(DateTime, nullable=True)
+    import_batch_id = Column(Integer, nullable=True)      # the ImportBatch that holds the leads this scrape saved
 
     def __repr__(self):
         return f"<ScrapingJob niche={self.niche} city={self.city} status={self.status}>"
@@ -605,6 +606,7 @@ _ADDED_COLUMNS = {
         ("import_batch_id",         "INTEGER"),
     ],
     "scraping_jobs": [
+        ("import_batch_id",            "INTEGER"),
         ("total_raw_matches",          "INTEGER DEFAULT 0"),
         ("skipped_low_rating",         "INTEGER DEFAULT 0"),
         ("skipped_duplicate_batch",    "INTEGER DEFAULT 0"),

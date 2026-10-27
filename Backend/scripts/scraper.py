@@ -22,10 +22,11 @@ from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn
 from utils.console import make_console
 from config import settings
 from database import (
-    Lead, LeadSource, PipelineStage, ScrapingJob,
+    ImportBatch, IndustryProfile, Lead, LeadSource, PipelineStage, ScrapingJob,
     SyncSessionLocal, LeadCRUD, init_db
 )
-from geo import infer_geo
+from geo import infer_geo, us_state
+from industries import industry_label, industry_options, normalize_industry
 from profile_service import DEFAULT_QUERY_TEMPLATE, build_query, resolve_profile_by_id
 from utils.crawler import crawl_website
 from utils.exporters import export_leads_to_csv
@@ -300,7 +301,8 @@ def deduplicate_leads(leads: List[dict]) -> tuple:
 
 # ─── Save to Database ─────────────────────────────────────────────────────────
 
-def save_leads_to_db(leads: List[dict], db, profile_id: int = None) -> tuple:
+def save_leads_to_db(leads: List[dict], db, profile_id: int = None, batch_id: int = None,
+                     industry_key: str = None) -> tuple:
     """Save scraped leads to the database. Skip duplicates.
     Returns (saved_leads, skipped_count) — skipped_count is how many of
     this batch already existed in the DB from an earlier scrape."""
@@ -315,15 +317,18 @@ def save_leads_to_db(leads: List[dict], db, profile_id: int = None) -> tuple:
             continue
 
         country, timezone = infer_geo(lead_data.get("city"), lead_data.get("address"))
+        state = us_state(lead_data.get("city"), lead_data.get("address"))
         lead = Lead(
-            profile_id=profile_id, country=country, timezone=timezone,
+            profile_id=profile_id, country=country, timezone=timezone, import_batch_id=batch_id,
+            attributes={"state": state, "industry_key": industry_key, "scraped_niche": lead_data.get("niche")}
+                       if industry_key else {"state": state},
             name=lead_data.get("name", ""),
             phone=lead_data.get("phone", ""),
             email=lead_data.get("email", ""),
             address=lead_data.get("address", ""),
             city=lead_data.get("city", ""),
             website=lead_data.get("website", ""),
-            niche=lead_data.get("niche", ""),
+            niche=(industry_label(industry_key) if industry_key else None) or lead_data.get("niche", ""),
             rating=lead_data.get("rating", 0.0),
             review_count=lead_data.get("review_count", 0),
             source=lead_data.get("source", LeadSource.GOOGLE_PLACES),
@@ -436,12 +441,17 @@ def run_scraper(niche: str, city: str, min_rating: float = 3.5,
                 leads are scored. None = the default profile.
     """
 
-    console.rule(f"[bold cyan]Phase 1: Scraping '{niche}' suppliers in '{city}'")
+    console.rule(f"[bold cyan]Scraping '{niche}' businesses in '{city}'")
 
     db = SyncSessionLocal()
 
+    industry_key = normalize_industry(niche) or "other"
+    if profile_id is None:                      # "plumbers" -> the Plumbing profile, anything unknown -> Other
+        profile_id = db.query(IndustryProfile.id).filter(IndustryProfile.slug == industry_key).scalar()
     profile = resolve_profile_by_id(db, profile_id)
     profile_id = profile.id if profile else None
+    if profile is not None and profile.slug != industry_key:
+        industry_key = profile.slug if profile.slug in {o["key"] for o in industry_options()} else industry_key
     query_template = (
         profile.config.get("search", {}).get("query_template") if profile else None
     ) or DEFAULT_QUERY_TEMPLATE
@@ -513,7 +523,14 @@ def run_scraper(niche: str, city: str, min_rating: float = 3.5,
 
         # ── Step 3: Save to database ───────────────────────────────────────
         console.print("\n[bold]Step 3/4:[/bold] Saving to database...")
-        saved_leads, db_duplicate_skipped = save_leads_to_db(unique_leads, db, profile_id)
+        batch = ImportBatch(name=f"Google Maps: {niche} in {city}", source="google maps", default_industry=industry_key,
+                            total_rows=len(unique_leads))
+        db.add(batch)
+        db.flush()
+        saved_leads, db_duplicate_skipped = save_leads_to_db(unique_leads, db, profile_id, batch.id, industry_key)
+        batch.imported = len(saved_leads)
+        batch.duplicates = db_duplicate_skipped
+        job.import_batch_id = batch.id
         job.total_scraped = len(saved_leads)
         job.skipped_duplicate_existing = db_duplicate_skipped
         db.commit()
@@ -543,7 +560,7 @@ def run_scraper(niche: str, city: str, min_rating: float = 3.5,
 
     # ── Export CSV ────────────────────────────────────────────────────────
     all_leads = db.query(Lead).filter(
-        Lead.niche == niche, Lead.city == city
+        Lead.import_batch_id == batch.id
     ).order_by(Lead.scraped_at.desc()).all()
 
     csv_path = export_leads_to_csv(all_leads, niche, city)

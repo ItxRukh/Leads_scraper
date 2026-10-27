@@ -1,8 +1,8 @@
 """
 update_lead_website.py — Quick script to update a lead's website URL
 -----------------------------------------------------------------------
-Test lead ka website "https://example.com" placeholder se replace karne
-ke liye, taake Audit (Phase 3) ko crawl karne ke liye real content mile.
+Replaces a test lead's placeholder website ("https://example.com") so the audit
+has real content to crawl.
 
 Usage:
     python update_lead_website.py

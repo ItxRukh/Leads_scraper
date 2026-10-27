@@ -1,5 +1,6 @@
 {
   "companyName": "Leadwren",
+  "sendProvider": "instantly",
   "adminName": "",
   "maxLeads": 50,
   "autoAudit": true,

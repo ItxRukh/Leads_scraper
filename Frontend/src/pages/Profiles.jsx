@@ -23,13 +23,10 @@ const BUILTINS = [
 const EVENTS = [
   { value: "email_opened",   label: "Opened an email" },
   { value: "replied",        label: "Replied" },
-  { value: "call_connected", label: "Call connected" },
   { value: "meeting_booked", label: "Meeting booked" },
 ];
 const CHANNELS = [
-  { value: "email",    label: "Email",    icon: "ti-mail" },
-  { value: "whatsapp", label: "WhatsApp", icon: "ti-brand-whatsapp" },
-  { value: "call",     label: "Call",     icon: "ti-phone" },
+  { value: "email", label: "Email", icon: "ti-mail" },        // SMS and calls happen in GoHighLevel after a reply
 ];
 const TIER_OPTIONS = [
   { value: "hot",  label: "Hot only" },
@@ -37,15 +34,13 @@ const TIER_OPTIONS = [
   { value: "cold", label: "Everyone" },
 ];
 const DEFAULT_STEPS = [
-  { key: "email_1",    label: "First email",      channel: "email",    delay_days: 0, min_tier: "cold" },
-  { key: "email_2",    label: "Follow-up email",  channel: "email",    delay_days: 3, min_tier: "cold" },
-  { key: "whatsapp_1", label: "WhatsApp message", channel: "whatsapp", delay_days: 1, min_tier: "warm" },
-  { key: "email_3",    label: "New-angle email",  channel: "email",    delay_days: 3, min_tier: "cold" },
-  { key: "call_1",     label: "Call",             channel: "call",     delay_days: 2, min_tier: "warm" },
-  { key: "email_4",    label: "Closing note",     channel: "email",    delay_days: 5, min_tier: "cold" },
+  { key: "email_1", label: "First email",     channel: "email", delay_days: 0, min_tier: "warm" },
+  { key: "email_2", label: "Follow-up email", channel: "email", delay_days: 3, min_tier: "warm" },
+  { key: "email_3", label: "New-angle email", channel: "email", delay_days: 4, min_tier: "warm" },
+  { key: "email_4", label: "Closing note",    channel: "email", delay_days: 7, min_tier: "warm" },
 ];
 const FIELD_SUGGESTIONS = ["rating", "review_count", "website", "email", "phone", "city", "country", "niche"];
-const REQUIRES = ["website", "email", "phone"];
+const REQUIRES = ["website", "email", "phone", "site_data"];
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 let uidCounter = 0;

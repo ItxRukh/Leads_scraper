@@ -105,10 +105,10 @@ def verify_email_local(email: str) -> dict:
 
 
 def verify_email(email: str) -> dict:
-    """Uses ZeroBounce only if a key is configured; otherwise the free local check."""
-    if settings.ZEROBOUNCE_API_KEY:
-        return verify_email_zerobounce(email)
-    return verify_email_local(email)
+    """Free check first, then the paid verifier (MillionVerifier or ZeroBounce) if a key is set. See email_verification.py."""
+    from email_verification import verify_address
+    result = verify_address(email)
+    return {"status": result["status"], "sub_status": result.get("detail", "")}
 
 
 def verify_email_zerobounce(email: str) -> dict:

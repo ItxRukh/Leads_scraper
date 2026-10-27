@@ -97,8 +97,8 @@ def test_follow_ups_count_from_when_the_previous_step_was_done(db, clock):
 
     clock(datetime(2026, 10, 15, 14, 5))
     sch.complete_step(db, lead.id)
-    assert (entry.next_step_key, entry.next_channel) == ("whatsapp_1", "whatsapp")
-    assert entry.next_due_at == datetime(2026, 10, 16, 14, 5)                                       # +1 day
+    assert (entry.next_step_key, entry.next_channel) == ("email_3", "email")                        # WhatsApp step skipped: not used here
+    assert entry.next_due_at > datetime(2026, 10, 15, 14, 5) + timedelta(days=3)
 
 
 def test_a_due_time_that_lands_outside_hours_moves_to_the_next_working_morning(db, clock):
@@ -119,12 +119,12 @@ def test_each_leads_clock_is_independent(db, clock):
 
 
 def test_steps_the_lead_cannot_receive_are_skipped_and_logged(db, clock):
-    lead, entry = queue_lead(db, email=None)                     # phone only
-    assert (entry.next_step_key, entry.next_channel) == ("whatsapp_1", "whatsapp")
-    assert entry.next_due_at == MON_10AM_NY                      # first real step: due now, delay ignored
-    skipped = db.query(OutreachStepLog).filter_by(lead_id=lead.id, status="skipped").all()
-    assert [s.step_key for s in skipped] == ["email_1", "email_2"]
+    lead, entry = queue_lead(db, email=None)                     # phone only: there is nothing to email
+    assert entry.sequence_status == sch.COMPLETED and entry.next_step_key is None
+    skipped = db.query(OutreachStepLog).filter_by(lead_id=lead.id, status="skipped").order_by(OutreachStepLog.id).all()
+    assert [s.step_key for s in skipped] == ["email_1", "email_2", "whatsapp_1", "email_3", "call_1", "email_4"]
     assert skipped[0].note == "no email address"
+    assert "GoHighLevel" in skipped[2].note                      # SMS, WhatsApp and calls are not made here
 
 
 def test_cold_leads_only_get_email_steps(db, clock):
@@ -149,7 +149,7 @@ def test_sequence_completes_after_the_last_step(db, clock):
     while entry.sequence_status == sch.ACTIVE:
         keys.append(entry.next_step_key)
         sch.complete_step(db, lead.id)
-    assert keys == ["email_1", "email_2", "whatsapp_1", "email_3", "call_1", "email_4"]
+    assert keys == ["email_1", "email_2", "email_3", "email_4"]       # the WhatsApp and call steps are skipped
     assert entry.next_due_at is None
 
 
@@ -176,11 +176,10 @@ def test_profile_sequence_is_used(db, clock):
         {"key": "call_first", "channel": "call", "delay_days": 0, "min_tier": "cold"},
         {"key": "mail_after", "channel": "email", "delay_days": 1.5, "min_tier": "cold"}]}}))
     lead, entry = queue_lead(db, profile_id=p.id)
-    assert entry.next_step_key == "call_first"
+    assert entry.next_step_key == "mail_after"                   # the call step is skipped
+    assert entry.next_due_at == MON_10AM_NY                      # the first real step is due now, its delay is ignored
     sch.complete_step(db, lead.id)
-    assert entry.next_step_key == "mail_after"
-    # 1.5 days after Monday 10:00 is Tuesday 22:00 in New York: after closing, so Wednesday 09:00
-    assert entry.next_due_at == datetime(2026, 10, 14, 13, 0)
+    assert entry.sequence_status == sch.COMPLETED
 
 
 # ─── Stopping ─────────────────────────────────────────────────────────────────
@@ -311,7 +310,7 @@ def test_schedule_api(client, db, clock):
 
     done = client.post(f"/outreach-queue/{lead.id}/done").json()
     assert done == {"lead_id": lead.id, "next_step": "email_2", "sequence_status": "active"}
-    assert client.post(f"/outreach-queue/{lead.id}/skip").json()["next_step"] == "whatsapp_1"
+    assert client.post(f"/outreach-queue/{lead.id}/skip").json()["next_step"] == "email_3"
     assert client.post("/outreach-queue/9999/done").status_code == 404
 
     assert client.get("/outreach-queue?due=true").json()["total"] == 0     # next step is days away
