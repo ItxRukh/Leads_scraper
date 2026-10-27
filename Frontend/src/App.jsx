@@ -5,6 +5,7 @@ import { ConnectionsProvider } from "./components/ConnectionsProvider";
 import { fetchAuthStatus, getToken, LOGOUT_EVENT } from "./auth";
 
 import Login           from "./pages/Login";
+import Import          from "./pages/Import";
 import Leads           from "./pages/Leads";
 import EmailOutreach   from "./pages/EmailOutreach";
 import Pipeline        from "./pages/Pipeline";
@@ -24,6 +25,7 @@ function AdminRoutes() {
     <ConnectionsProvider>
     <Routes>
       <Route path="/admin/analytics" element={page(Analytics)} />
+      <Route path="/admin/import"    element={page(Import)} />
       <Route path="/admin/leads"     element={page(Leads)} />
       <Route path="/admin/queue"     element={page(OutreachQueue)} />
       <Route path="/admin/email"     element={page(EmailOutreach)} />

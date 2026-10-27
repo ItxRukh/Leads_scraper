@@ -97,6 +97,24 @@ Back it up by copying the file now and then. Moving to a hosted database (for ex
 | `WhatsApp_Extension/` | Chrome extension that sends the WhatsApp messages; see its README. The admin panel's WhatsApp chip offers it as a zip download (`/extension/download`) with the install steps |
 | `_removed/` | Code taken out of the app (public landing page, login), kept for reference |
 
+## Import leads (Import page)
+
+Upload a CSV / Excel file, or paste rows copied from a sheet. A template is on the page ("Download sample CSV") and in `Backend/samples/leads_sample.csv`.
+
+| Column | Needed? | Used for |
+| --- | --- | --- |
+| `business_name` | **yes** | the lead's name |
+| `email` | one of email / website / phone | outreach; without it the website is searched at audit time |
+| `website` | (same) | the audit: what the site is missing |
+| `phone` | (same) | kept for GHL; cleaned to `+1XXXXXXXXXX` |
+| `industry` | recommended | the industry tag, so the right rules and message are used |
+| `city`, `state` | recommended | time zone (messages go out in the lead's working hours) and personal touches |
+| `contact_name`, `contact_title` | optional | the greeting ("Hi Dana") |
+
+Other column names are recognised too (`Company`, `E-mail`, `Cell`, `Category`, first/last name...); the page shows the mapping and lets you change it. Extra columns are kept on the lead.
+
+What happens: columns are matched, every field is tidied (emails, US phones, websites, states, formula characters), the industry is matched from the industry column or the business name, and rows are checked against your existing leads and the Do-Not-Contact list. Groq only tags industries that are still missing and matches columns it does not recognise; it never supplies emails, phones or websites, and text pasted without column names is read by Groq only if every value it returns appears in your text. Nothing is saved until you press Import, and an import can be undone while none of its leads has been contacted.
+
 ## How a lead moves through the system
 
 1. **Capture**: the scraper searches using the chosen profile's wording and saves leads with their country and time zone.

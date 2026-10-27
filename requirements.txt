@@ -16,4 +16,5 @@ sentry-sdk[fastapi]
 pytest
 httpx
 dnspython
+openpyxl
 tzdata

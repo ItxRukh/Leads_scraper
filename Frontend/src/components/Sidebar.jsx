@@ -12,6 +12,7 @@ const NAV = [
   {
     section: "Outreach",
     items: [
+      { to: "/admin/import",   icon: "ti-upload",         label: "Import leads" },
       { to: "/admin/leads",    icon: "ti-users",          label: "Leads",         badge: null, badgeType: "count" },
       { to: "/admin/queue",    icon: "ti-list-check",     label: "Outreach queue" },
       { to: "/admin/email",    icon: "ti-mail",           label: "Email outreach" },

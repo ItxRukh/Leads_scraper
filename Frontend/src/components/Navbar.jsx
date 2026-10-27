@@ -9,6 +9,7 @@ import { getToken, logout } from "../auth";
 
 const PAGE_TITLES = {
   "/admin/analytics": { label: "Analytics",       sub: "Funnel, conversion and campaign stats" },
+  "/admin/import":    { label: "Import leads",    sub: "Upload or paste leads, clean them and check for duplicates" },
   "/admin/leads":     { label: "Leads",            sub: "All scraped and scored supplier leads" },
   "/admin/queue":     { label: "Outreach queue",   sub: "Who to contact next, and when" },
   "/admin/email":     { label: "Email outreach",   sub: "Campaigns via Instantly" },

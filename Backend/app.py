@@ -141,6 +141,9 @@ app.include_router(instantly_router)
 from webhooks.inbound_webhook import router as inbound_router
 app.include_router(inbound_router)
 
+from import_api import router as import_router
+app.include_router(import_router)
+
 from profiles_api import router as profiles_router
 app.include_router(profiles_router)
 

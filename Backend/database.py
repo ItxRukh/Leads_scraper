@@ -156,6 +156,7 @@ class Lead(Base):
     timezone   = Column(String(64),  nullable=True)  # IANA name, e.g. "America/New_York"
     attributes = Column(JSON, nullable=True)
     signals    = Column(JSON, nullable=True)
+    import_batch_id = Column(Integer, nullable=True)   # set when the lead came from the Import page (ImportBatch.id)
 
     # ── Ratings (from Google/Yelp) ─────────────────────────────────────────
     rating       = Column(Float,   default=0.0)
@@ -544,6 +545,31 @@ class ScrapingJob(Base):
         return f"<ScrapingJob niche={self.niche} city={self.city} status={self.status}>"
 
 
+# ─── Import Batch ─────────────────────────────────────────────────────────────
+
+class ImportBatch(Base):
+    """
+    One use of the Import page (a file or pasted text). Lets a whole import be found again,
+    counted, and undone while its leads have not been contacted.
+    """
+    __tablename__ = "import_batches"
+
+    id               = Column(Integer, primary_key=True, autoincrement=True)
+    name             = Column(String(200), nullable=False)
+    source           = Column(String(300), nullable=True)      # "file: leads.csv" or "pasted text"
+    default_industry = Column(String(60),  nullable=True)
+    total_rows       = Column(Integer, default=0)
+    imported         = Column(Integer, default=0)
+    duplicates       = Column(Integer, default=0)
+    on_dnc           = Column(Integer, default=0)
+    invalid          = Column(Integer, default=0)
+    ai_used          = Column(Boolean, default=False)
+    created_at       = Column(DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<ImportBatch id={self.id} name={self.name!r} imported={self.imported}>"
+
+
 # ─── Indexes for Performance ──────────────────────────────────────────────────
 # Indexes speed up queries on columns we filter/search by frequently
 
@@ -553,6 +579,7 @@ Index("ix_leads_pipeline",      Lead.pipeline_stage)
 Index("ix_leads_email",         Lead.email)
 Index("ix_leads_do_not_contact", Lead.do_not_contact)
 Index("ix_leads_profile",       Lead.profile_id)
+Index("ix_leads_import_batch",  Lead.import_batch_id)
 Index("ix_queue_status",        OutreachQueueEntry.status)
 Index("ix_messages_lead_step",  OutreachMessage.lead_id, OutreachMessage.step_key)
 Index("ix_messages_status",     OutreachMessage.channel, OutreachMessage.status, OutreachMessage.release_at)
@@ -575,6 +602,7 @@ _ADDED_COLUMNS = {
         ("attributes",              "JSON"),
         ("signals",                 "JSON"),
         ("score_breakdown",         "JSON"),
+        ("import_batch_id",         "INTEGER"),
     ],
     "scraping_jobs": [
         ("total_raw_matches",          "INTEGER DEFAULT 0"),
