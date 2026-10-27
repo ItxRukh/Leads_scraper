@@ -1,0 +1,41 @@
+# ── Environment variables (NEVER commit these — contains real API keys) ────
+.env
+Backend/.env
+*.env
+.env.*
+
+# ── Python ───────────────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+venv/
+env/
+
+# ── Database ─────────────────────────────────────────────────────────────
+Backend/data/*.db
+Backend/data/*.sqlite3
+
+# ── Logs ─────────────────────────────────────────────────────────────────
+logs/
+*.log
+
+# ── Exports (generated files, not source) ───────────────────────────────
+Backend/exports/*
+
+# ── Node / Frontend ──────────────────────────────────────────────────────
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# ── Editor ───────────────────────────────────────────────────────────────
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

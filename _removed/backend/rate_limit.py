@@ -1,0 +1,11 @@
+"""
+rate_limit.py — Shared rate limiter
+-----------------------------------
+Lives in its own module so app.py and auth.py can both use it without
+importing each other. Limits are keyed by client IP.
+"""
+
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+limiter = Limiter(key_func=get_remote_address)

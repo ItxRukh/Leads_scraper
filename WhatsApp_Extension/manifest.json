@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "Leads Scraper WhatsApp Sync",
+  "version": "1.0.0",
+  "description": "Sends the WhatsApp messages queued by Leads Scraper from your own WhatsApp Web, and reports replies back.",
+  "permissions": ["storage", "alarms", "tabs"],
+  "host_permissions": [
+    "https://web.whatsapp.com/*",
+    "http://localhost:8000/*",
+    "http://127.0.0.1:8000/*"
+  ],
+  "optional_host_permissions": ["http://*/*", "https://*/*"],
+  "background": { "service_worker": "background.js" },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Leads Scraper WhatsApp Sync"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://web.whatsapp.com/*"],
+      "js": ["shared.js", "page-bridge.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": ["https://web.whatsapp.com/*"],
+      "js": ["shared.js", "content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

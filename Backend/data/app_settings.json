@@ -1,0 +1,14 @@
+{
+  "companyName": "EcomDrop.ai",
+  "adminName": "",
+  "maxLeads": 50,
+  "autoAudit": true,
+  "hotThreshold": 70,
+  "warmThreshold": 40,
+  "exportFormat": "json",
+  "queueMinTier": "warm",
+  "autoExport": false,
+  "digestReadAt": null,
+  "timezone": "Europe/London",
+  "autoTier": true
+}

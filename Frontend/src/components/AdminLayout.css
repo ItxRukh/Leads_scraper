@@ -1,0 +1,81 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --or:       #e8622a;
+  --or-dim:   rgba(232,98,42,0.13);
+  --or-hover: rgba(232,98,42,0.08);
+  --blk:      #0a0a0a;
+  --blk2:     #111111;
+  --blk3:     #181818;
+  --blk4:     #1e1e1e;
+  --blk5:     #242424;
+  --wht:      #ffffff;
+  --muted:    #888888;
+  --muted2:   #555555;
+  --bdr:      rgba(255,255,255,0.07);
+  --bdr2:     rgba(255,255,255,0.04);
+  --font:     'Noto Serif', serif;
+
+  --sidebar-w: 220px;
+  --navbar-h:  58px;
+  --footer-h:  48px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body, #root {
+  height: 100%;
+  font-family: var(--font);
+  background: var(--blk);
+  color: var(--wht);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Admin layout shell ── */
+.admin-layout {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.admin-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.admin-body {
+  flex: 1;
+  overflow-y: auto;
+  background: var(--blk);
+  padding: 24px 28px;
+}
+
+/* ── Mobile overlay (behind open sidebar) ─────────────────────────── */
+.sb-mobile-overlay {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  /* hide sidebar space — it's fixed on mobile */
+  .admin-layout { overflow: visible; }
+
+  .sb-mobile-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    backdrop-filter: blur(3px);
+    z-index: 199;
+    animation: fadeIn 0.2s ease;
+  }
+
+  .admin-body { padding: 16px 14px; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}

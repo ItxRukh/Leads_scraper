@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Leads Scraper WhatsApp Sync</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <h1>WhatsApp Sync</h1>
+
+  <section class="status">
+    <div class="row"><span>WhatsApp Web</span><b id="state">…</b></div>
+    <div class="row"><span>Backend</span><b id="backend">…</b></div>
+    <div class="row"><span>Sent from here</span><b id="sent">0</b></div>
+    <div class="row" id="pendingRow" hidden><span>Waiting to report</span><b id="pending">0</b></div>
+  </section>
+
+  <button id="open" class="primary">Open WhatsApp Web</button>
+
+  <section class="settings">
+    <label for="url">Backend address</label>
+    <input id="url" type="text" spellcheck="false" placeholder="http://localhost:8000">
+
+    <label class="check"><input id="enabled" type="checkbox"> Send queued messages</label>
+    <label class="check"><input id="autoOpen" type="checkbox"> Open WhatsApp Web when messages are waiting</label>
+
+    <div class="buttons">
+      <button id="save">Save</button>
+      <button id="test">Test connection</button>
+    </div>
+    <p id="message" class="message"></p>
+  </section>
+
+  <script src="shared.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,310 @@
+/* ── CallLogs.css (scoped under .calls-page to avoid leaking into other pages) ── */
+
+.calls-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+
+  color: #fff;
+}
+
+/* ── Month/Year filter toolbar ── */
+.calls-page .cl-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.calls-page .cl-toolbar-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.35);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Sliding capsule filter — year stepper + a month ribbon with ONE glowing
+   pill that glides between chips. */
+.calls-page .my-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 3px 4px;
+  max-width: 100%;
+}
+.calls-page .my-year {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 2px;
+  flex-shrink: 0;
+}
+.calls-page .my-year-arrow {
+  width: 24px; height: 24px;
+  border-radius: 6px;
+  background: none; border: none;
+  color: rgba(255,255,255,0.4);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.calls-page .my-year-arrow:hover:not(:disabled) { background: rgba(255,255,255,0.08); color: #fff; }
+.calls-page .my-year-arrow:disabled { opacity: 0.25; cursor: default; }
+.calls-page .my-year-label {
+  font-size: 12px; font-weight: 700;
+  color: rgba(255,255,255,0.8);
+  min-width: 54px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.calls-page .my-year-clear {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: rgba(244,63,94,0.14);
+  border: none;
+  color: #f87171;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px;
+  cursor: pointer;
+  margin-left: 2px;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.calls-page .my-year-clear:hover { background: rgba(244,63,94,0.25); }
+
+.calls-page .my-divider {
+  width: 1px; height: 20px;
+  background: rgba(255,255,255,0.09);
+  flex-shrink: 0;
+}
+
+.calls-page .my-month-track {
+  position: relative;
+  display: flex;
+  transition: opacity 0.2s;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.calls-page .my-month-track::-webkit-scrollbar { display: none; }
+.calls-page .my-month-track--disabled { opacity: 0.35; }
+.calls-page .my-month-slider {
+  position: absolute;
+  top: 2px; bottom: 2px;
+  left: 0;
+  border-radius: 7px;
+  background: linear-gradient(135deg, rgba(232,98,42,0.32), rgba(232,98,42,0.12));
+  box-shadow: 0 0 0 1px rgba(232,98,42,0.4), 0 0 12px rgba(232,98,42,0.28);
+  transition: transform 0.28s cubic-bezier(0.34, 1.4, 0.64, 1);
+  pointer-events: none;
+}
+.calls-page .my-month-chip {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  font-size: 10.5px; font-weight: 600;
+  font-family: inherit;
+  color: rgba(255,255,255,0.4);
+  background: none; border: none;
+  padding: 6px 0;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.calls-page .my-month-chip:hover:not(:disabled) { color: rgba(255,255,255,0.8); }
+.calls-page .my-month-chip--active { color: #e8622a; }
+.calls-page .my-month-chip:disabled { cursor: default; }
+
+/* ── Stat Grid ── */
+.calls-page .stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.calls-page .stat-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 20px;
+  border-radius: 12px;
+}
+
+.calls-page .sc-value {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 8px 0 4px;
+}
+
+.calls-page .sc-label {
+  font-size: 13px;
+  color: #9ca3af;
+}
+
+.calls-page .sc-sub {
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 4px;
+}
+
+/* ── Charts Grid ── */
+/* Fully unique class name (not the shared "charts-grid") plus !important
+   so this can NEVER be overridden by Leads.css / Pipeline.css / WhatsApp.css
+   regardless of load order or specificity. */
+.cl-charts-grid {
+  display: grid !important;
+  grid-template-columns: 2fr 1fr 1fr !important;
+  grid-template-areas:
+    "wide wide outcome"
+    "avg  new  new" !important;
+  gap: 16px !important;
+}
+
+.cl-gp-wide    { grid-area: wide !important; }
+.cl-gp-outcome { grid-area: outcome !important; }
+.cl-gp-avg     { grid-area: avg !important; }
+.cl-gp-new     { grid-area: new !important; }
+
+.calls-page .chart-panel {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 20px;
+  border-radius: 12px;
+}
+
+.calls-page .panel-title { font-weight: 600; margin-bottom: 4px; }
+.calls-page .panel-sub { font-size: 12px; color: #6b7280; margin-bottom: 16px; }
+
+/* ── Chart skeleton / legend / tooltip (were missing — outcome donut used them unstyled) ── */
+.calls-page .chart-skeleton {
+  height: 150px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.06) 50%, rgba(255,255,255,0.03) 75%);
+  background-size: 200% 100%;
+  animation: cl-sc-shimmer 1.4s infinite;
+}
+@keyframes cl-sc-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+.calls-page .chart-legend  { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 10px; }
+.calls-page .legend-item   { display: flex; align-items: center; gap: 5px; font-size: 10.5px; color: rgba(255,255,255,0.45); }
+.calls-page .legend-item b { font-weight: 700; color: rgba(255,255,255,0.8); }
+.calls-page .legend-dot    { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+
+.calls-page .donut-body    { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.calls-page .donut-legend  { flex: 1; min-width: 100px; display: flex; flex-direction: column; gap: 8px; }
+.calls-page .dl-item       { display: flex; align-items: center; gap: 7px; font-size: 11.5px; }
+.calls-page .dl-dot        { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+.calls-page .dl-name       { flex: 1; color: rgba(255,255,255,0.5); }
+.calls-page .dl-val        { font-weight: 700; color: #fff; font-size: 12px; }
+
+/* ── Radial gauge (picked up rate) ──────────────────────────────── */
+.calls-page .gauge-body   { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.calls-page .gauge-wrap   { position: relative; width: 150px; height: 150px; flex-shrink: 0; }
+.calls-page .gauge-center {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  pointer-events: none;
+}
+.calls-page .gauge-value  { font-size: 26px; font-weight: 700; color: #fff; line-height: 1; }
+.calls-page .gauge-label  { font-size: 11px; color: rgba(255,255,255,0.45); margin-top: 4px; }
+
+.calls-page .chart-tooltip { background: rgba(20,20,20,0.9); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 8px 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.4); }
+.calls-page .ct-label { font-size: 11px; color: rgba(255,255,255,0.4); margin-bottom: 2px; }
+.calls-page .ct-val   { font-size: 13px; font-weight: 700; color: #fff; }
+
+/* ── Table Styling ── */
+.calls-page .table-panel {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.calls-page .table-header {
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.calls-page table { width: 100%; border-collapse: collapse; }
+.calls-page th { text-align: left; padding: 12px 20px; color: #9ca3af; font-size: 12px; text-transform: uppercase; }
+.calls-page td { padding: 16px 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.03); font-size: 14px; }
+
+/* ── Badges ── */
+.calls-page .call-outcome-badge {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.calls-page .co-interested { background: rgba(74, 222, 128, 0.1); color: #4ade80; }
+.calls-page .co-not, .calls-page .co-wrong { background: rgba(248, 113, 113, 0.1); color: #f87171; }
+
+/* ── Buttons & Inputs ── */
+.calls-page .btn-primary {
+  background: #e8622a;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.calls-page .btn-ghost {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 6px;
+}
+
+/* ── Modal ── */
+.calls-page .modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.calls-page .modal {
+  background: #18181b;
+  width: 100%;
+  max-width: 500px;
+  padding: 24px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* ── Responsive ── */
+@media (max-width: 1024px) {
+  .cl-charts-grid {
+    grid-template-columns: 1fr !important;
+    grid-template-areas:
+      "wide"
+      "outcome"
+      "avg"
+      "new" !important;
+  }
+}
+@media (max-width: 768px) {
+  .calls-page .cl-toolbar    { flex-direction: column; align-items: stretch; }
+  .calls-page .my-filter     { width: 100%; }
+  .calls-page .my-month-track { flex: 1; }
+}
+@media (max-width: 480px) {
+  .calls-page .my-year-label { min-width: 44px; font-size: 11px; }
+  .calls-page .my-divider    { display: none; }
+  .calls-page .my-year       { border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 4px; margin-bottom: 2px; width: 100%; justify-content: center; }
+  .calls-page .my-filter     { flex-wrap: wrap; }
+  .calls-page .my-month-track { width: 100%; }
+}

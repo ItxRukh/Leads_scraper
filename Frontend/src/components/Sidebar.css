@@ -1,0 +1,143 @@
+.sidebar {
+  width: var(--sidebar-w);
+  min-width: var(--sidebar-w);
+  height: 100vh;
+  background: var(--blk2);
+  border-right: 1px solid var(--bdr);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+}
+.sidebar::-webkit-scrollbar { display: none; }
+
+/* ── Logo ── */
+.sb-logo {
+  padding: 20px 18px 16px;
+  border-bottom: 1px solid var(--bdr);
+  flex-shrink: 0;
+}
+.sb-logo-text {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--wht);
+  letter-spacing: 0.02em;
+}
+.sb-logo-text span { color: var(--or); }
+.sb-logo-sub {
+  font-size: 10px;
+  color: var(--muted2);
+  margin-top: 3px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ── Nav ── */
+.sb-nav {
+  flex: 1;
+  padding: 8px 0 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.sb-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.sb-section-label {
+  font-size: 9.5px;
+  color: var(--muted2);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 14px 18px 5px;
+}
+
+.sb-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 18px;
+  text-decoration: none;
+  font-size: 12.5px;
+  font-family: var(--font);
+  color: rgba(255,255,255,0.5);
+  font-weight: 500;
+  transition: background 0.15s, color 0.15s;
+  border-right: 2px solid transparent;
+  position: relative;
+}
+.sb-item:hover {
+  background: rgba(255,255,255,0.04);
+  color: rgba(255,255,255,0.85);
+}
+.sb-item.active {
+  background: var(--or-dim);
+  color: var(--or);
+  border-right-color: var(--or);
+}
+.sb-item i {
+  font-size: 15px;
+  min-width: 16px;
+}
+.sb-item span { flex: 1; }
+
+/* ── Badges ── */
+.sb-badge {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 10px;
+  margin-left: auto;
+  font-family: var(--font);
+}
+.sb-badge--or   { background: var(--or);      color: #fff; }
+.sb-badge--green { background: #1a3d2a; color: #4ade80; }
+
+/* ── Divider ── */
+.sb-divider {
+  height: 1px;
+  background: var(--bdr);
+  margin: 6px 0;
+}
+
+/* ── Mobile hamburger support ─────────────────────────────────────── */
+.sb-close-btn {
+  display: none; /* hidden on desktop */
+}
+
+@media (max-width: 768px) {
+  /* sidebar hidden off-screen by default */
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    z-index: 200;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    box-shadow: 4px 0 32px rgba(0,0,0,0.6);
+  }
+
+  /* slide in when open */
+  .sidebar--open {
+    transform: translateX(0);
+  }
+
+  /* X close button visible on mobile */
+  .sb-close-btn {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 12px 14px 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: rgba(255,255,255,0.4);
+    font-size: 18px;
+    transition: color 0.15s;
+  }
+  .sb-close-btn:hover { color: #fff; }
+}
