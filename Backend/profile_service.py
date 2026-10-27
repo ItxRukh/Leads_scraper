@@ -252,6 +252,8 @@ def bootstrap_profiles(db: Session) -> None:
       2. Attach leads that have no profile to it and copy their dropship
          columns into `signals` (the old columns are kept for now).
     """
+    from industry_profiles import seed_industry_profiles
+
     if db.query(func.count(IndustryProfile.id)).scalar() == 0:
         db.add(IndustryProfile(
             name="Dropship Suppliers", slug=DEFAULT_PROFILE_SLUG,
@@ -260,6 +262,8 @@ def bootstrap_profiles(db: Session) -> None:
         ))
         db.commit()
         logger.info("Created default Industry Profile 'Dropship Suppliers'")
+
+    seed_industry_profiles(db)
 
     default = db.query(IndustryProfile).filter(IndustryProfile.slug == DEFAULT_PROFILE_SLUG).first()
     if default is None:

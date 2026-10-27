@@ -115,6 +115,29 @@ Other column names are recognised too (`Company`, `E-mail`, `Cell`, `Category`, 
 
 What happens: columns are matched, every field is tidied (emails, US phones, websites, states, formula characters), the industry is matched from the industry column or the business name, and rows are checked against your existing leads and the Do-Not-Contact list. Groq only tags industries that are still missing and matches columns it does not recognise; it never supplies emails, phones or websites, and text pasted without column names is read by Groq only if every value it returns appears in your text. Nothing is saved until you press Import, and an import can be undone while none of its leads has been contacted.
 
+## Industry profiles and the website audit
+
+Every industry in `Backend/industries.py` has a ready-made profile (`Backend/industry_profiles.py`), created on start and never overwritten, so edits on the Industry profiles page are kept. A lead imported with an industry is scored under that industry's profile.
+
+**What the audit does.** For each lead it opens the homepage plus up to two pages that look like contact or booking pages, and records what it finds (`Backend/utils/site_signals.py`): tap-to-call phone link, contact form, online booking (Calendly, Housecall Pro, Zocdoc, "Book online" buttons...), chat or text-back widget, after-hours or emergency wording, reviews, a mobile-ready page, https, and an old copyright year. Page addresses that point to internal networks are refused.
+
+**Scoring.** The score is an opportunity score out of 100, and a high score means more to gain, so Hot leads are the best prospects. Each rule is something our agency workflows fix or build on, and it names the workflow ("we offer: After-Hours Call Coverage"): missing online booking, chat or text-back, tap-to-call, contact form, after-hours wording, service-area page, intake forms, reviews; plus signs the site shows that our workflows build on (it invites estimates, sells maintenance or recurring plans, invites referrals). Weights are set per industry from what that industry's workflows are about (an urgent trade values after-hours and chat; pest control values recurring plans; a clinic values online booking and intake forms; imaging and radiology value referral intake). A named contact, an email and a second location add bonus points. The three biggest opportunities are kept on the lead (`top_gaps`), shown in the lead details with the matching workflow, and given to the email writer, which says "I couldn't find..." and never states them as facts.
+
+If a site cannot be reached, the lead is not punished: its checks are reported as "not checked" and the score is marked incomplete.
+
+**Audit an import.** On the Import page press "Check websites and score these leads" (or "Audit" in Earlier imports). It runs in the background; progress and the Hot / Warm / Cold counts appear on the page.
+
+Contact is by email only (four steps over two weeks). SMS and calls begin after a reply, from GHL.
+
+## Knowledge base (what the AI knows about our service)
+
+`Backend/knowledge/<industry>.md` holds, for each industry, three parts: a short summary (used in first emails), a FAQ, and a knowledge base (who we help, the problems we fix, every workflow with what it does, what it needs and how long it takes, benefits, how we work, plans and timelines, what we do not do, optional services). They were built from the agency website (`D:gency-site`) and contain **no prices**. They are loaded into each industry profile when the backend starts, into the Offer section of the Industry profiles page ("What you offer", "Questions and answers", "Knowledge base").
+
+- First emails use the summary, the problems and the benefits. Replies to a lead use the whole knowledge base.
+- The AI is told never to state prices (it says plans are scoped per business and the numbers are shared on a short call), and to name a specific software product as supported only if that exact name appears in the knowledge base; otherwise it promises to confirm on a call.
+- Profiles nobody has edited (version 1) are refreshed automatically when these files change. After you save a profile on the page it is yours and is never overwritten.
+- When the agency website changes, regenerate the files or edit them; every workflow name used by a scoring rule is checked against them by the tests.
+
 ## How a lead moves through the system
 
 1. **Capture**: the scraper searches using the chosen profile's wording and saves leads with their country and time zone.

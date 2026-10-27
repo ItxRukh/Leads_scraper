@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
 import profile_service as svc
+from industries import industry_options
 from database import IndustryProfile, Lead
 from profile_schema import ProfileConfig, ProfileIn, ScoringRule
 
@@ -67,11 +68,11 @@ def test_bootstrap_seeds_once_and_migrates_existing_leads(db):
     svc.bootstrap_profiles(db)
     svc.bootstrap_profiles(db)  # second run must change nothing
 
-    profiles = db.query(IndustryProfile).all()
-    assert len(profiles) == 1 and profiles[0].slug == svc.DEFAULT_PROFILE_SLUG
+    default = db.query(IndustryProfile).filter_by(slug=svc.DEFAULT_PROFILE_SLUG).one()
+    assert db.query(IndustryProfile).count() == 1 + len(industry_options())     # the default plus one per industry
 
     lead = db.query(Lead).one()
-    assert lead.profile_id == profiles[0].id
+    assert lead.profile_id == default.id
     assert lead.signals["dropship_mentioned"] is True
     assert lead.signals["sells_on_amazon"] is True
     assert lead.signals["delivery_fast"] is False

@@ -324,6 +324,17 @@ export default function LeadDetailModal({ leadId, onClose }) {
                 </div>
               )}
 
+              {lead.top_gaps?.length > 0 && (
+                <div className="ld-section">
+                  <div className="ld-section-label">Biggest opportunities found on the website</div>
+                  <ul className="ld-gaps">
+                    {lead.top_gaps.map((g) => (
+                      <li key={g.key}>{g.label} <b>+{g.points}</b>{g.fix && <span className="ld-fix">We offer: {g.fix}</span>}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
               {lead.audit_summary && (
                 <div className="ld-section">
                   <div className="ld-section-label">Audit summary</div>

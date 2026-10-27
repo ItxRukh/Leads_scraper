@@ -104,7 +104,7 @@ function blankForm() {
   return {
     id: null, name: "", description: "", target_type: "business",
     query_template: "{niche} {city}", default_niche: "",
-    summary: "", tone: "friendly, professional", language: "en", booking_link: "", faq: "",
+    summary: "", tone: "friendly, professional", language: "en", booking_link: "", faq: "", knowledge: "",
     hot: "", warm: "", rules: [],
     steps: DEFAULT_STEPS.map(stepToForm),
   };
@@ -116,7 +116,7 @@ function formFromProfile(p) {
     id: p.id, name: p.name, description: p.description ?? "", target_type: p.target_type,
     query_template: c.search.query_template, default_niche: c.search.default_niche ?? "",
     summary: c.offer.summary, tone: c.offer.tone, language: c.offer.language,
-    booking_link: c.offer.booking_link ?? "", faq: c.offer.faq ?? "",
+    booking_link: c.offer.booking_link ?? "", faq: c.offer.faq ?? "", knowledge: c.offer.knowledge ?? "",
     hot: c.scoring.hot_threshold ?? "", warm: c.scoring.warm_threshold ?? "",
     rules: c.scoring.rules.map(ruleFromApi),
     steps: c.sequence.steps.map(stepToForm),
@@ -178,7 +178,7 @@ function payloadFromForm(f) {
       search: { query_template: f.query_template.trim(), default_niche: f.default_niche.trim() || null },
       offer: {
         summary: f.summary.trim(), tone: f.tone.trim(), language: f.language.trim() || "en",
-        booking_link: f.booking_link.trim(), faq: f.faq.trim(),
+        booking_link: f.booking_link.trim(), faq: f.faq.trim(), knowledge: f.knowledge.trim(),
       },
       scoring: { hot_threshold: num(f.hot), warm_threshold: num(f.warm), rules },
       sequence: { steps },
@@ -651,6 +651,13 @@ export default function Profiles() {
                 <textarea className="pf-textarea" rows={4}
                           placeholder={"Q: How much does it cost?\nA: ...\n\nWhen a lead asks something, the AI may use only this and the text above."}
                           value={form.faq} onChange={e => setF({ faq: e.target.value })} />
+              </div>
+              <div className="form-group">
+                <label>Knowledge base</label>
+                <textarea className="pf-textarea" rows={10} maxLength={14000}
+                          placeholder={"Everything the AI may use to answer questions about what you offer this industry: services, benefits, how it works, what you do not do.\n\nNever put prices here."}
+                          value={form.knowledge} onChange={e => setF({ knowledge: e.target.value })} />
+                <span className="pf-hint">Used when answering a lead's reply, and in part when writing first emails. {form.knowledge.length.toLocaleString()} of 14,000 characters.</span>
               </div>
 
               <div className="pf-section">Scoring</div>

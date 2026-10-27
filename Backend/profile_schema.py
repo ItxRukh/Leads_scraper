@@ -26,7 +26,7 @@ A scoring rule says "if THIS is true for a lead, add N points":
     intent    something the lead did after outreach event
 
 `group` is "base" (counts toward the 100-point base score) or "bonus".
-`requires` lists data the rule needs ("website", "email"…); when that data is
+`requires` lists data the rule needs ("website", "email", "phone", "site_data" = the website was checked for booking, chat…); when that data is
 missing the rule is reported as "not checked" instead of "failed".
 """
 
@@ -47,7 +47,7 @@ BUILTIN_DETECTORS = {
 FIELD_OPS = {">=", "<=", ">", "<", "==", "!=", "exists", "in", "contains"}
 KEYWORD_SOURCES = {"website_text"}
 INTENT_EVENTS = {"email_opened", "email_clicked", "replied", "call_connected", "meeting_booked"}
-REQUIREMENTS = {"website", "email", "phone"}
+REQUIREMENTS = {"website", "email", "phone", "site_data"}
 
 
 class ScoringRule(BaseModel):
@@ -152,6 +152,7 @@ class OfferConfig(BaseModel):
     language: str = "en"
     booking_link: str = Field(default="", max_length=500)   # where an interested lead can book a call
     faq: str = Field(default="", max_length=6000)           # questions and answers the AI may use in replies
+    knowledge: str = Field(default="", max_length=14000)    # everything we offer this industry; replies may use it, never prices
 
 
 

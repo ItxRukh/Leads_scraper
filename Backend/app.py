@@ -1681,6 +1681,11 @@ def _serialize_lead(lead: Lead, outreach_status: Optional[dict] = None) -> dict:
         "outreach_reason":          outreach_status.get("primary_reason") if outreach_status else None,
         "outreach_status":          outreach_status,
 
+        # What the website audit found (Industry Profile rules): biggest gaps first, plus the raw findings
+        "top_gaps":                 (lead.attributes or {}).get("top_gaps", []),
+        "site_findings":            {k: v for k, v in (lead.attributes or {}).items() if k.startswith("site_")},
+        "import_batch_id":          lead.import_batch_id,
+
         # Timestamps
         "scraped_at":               lead.scraped_at.isoformat() if lead.scraped_at else None,
         "audited_at":               lead.audited_at.isoformat() if lead.audited_at else None,

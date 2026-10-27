@@ -6,21 +6,24 @@ import_api.py — The Import page's endpoints
     POST   /imports/preview      read a file or pasted text, clean it, flag duplicates (saves nothing)
     POST   /imports/commit       save the good rows as leads under one batch
     GET    /imports              earlier imports
+    POST   /imports/{id}/audit   check the websites of the batch's leads and score them (runs in the background)
+    GET    /imports/{id}/audit-status   how far the audit is, and how many leads are Hot / Warm / Cold
     DELETE /imports/{id}         undo an import, only while none of its leads has been contacted
 """
 
 import json
 from typing import Optional
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import PlainTextResponse
+from loguru import logger
 from pydantic import BaseModel, Field
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 import lead_import as li
-from database import (CallLog, EmailLog, ImportBatch, InboundMessage, Lead, LeadContact, OutreachMessage,
-                       OutreachQueueEntry, OutreachStepLog, PipelineStage, WhatsAppLog, get_db)
+from database import (CallLog, EmailLog, ImportBatch, InboundMessage, Lead, LeadContact, LeadTier, OutreachMessage,
+                       OutreachQueueEntry, OutreachStepLog, PipelineStage, SyncSessionLocal, WhatsAppLog, get_db)
 from industries import industry_options, normalize_industry
 
 router = APIRouter(prefix="/imports", tags=["Import"])
@@ -135,11 +138,57 @@ def commit(body: CommitBody, db: Session = Depends(get_db)):
 def list_batches(db: Session = Depends(get_db)):
     counts = dict(db.query(Lead.import_batch_id, func.count(Lead.id))
                   .filter(Lead.import_batch_id.isnot(None)).group_by(Lead.import_batch_id).all())
+    audited = dict(db.query(Lead.import_batch_id, func.count(Lead.id))
+                   .filter(Lead.import_batch_id.isnot(None), Lead.audited_at.isnot(None)).group_by(Lead.import_batch_id).all())
     batches = db.query(ImportBatch).order_by(ImportBatch.id.desc()).limit(50).all()
     return [{"id": b.id, "name": b.name, "source": b.source, "imported": b.imported, "leads_now": counts.get(b.id, 0),
+             "audited": audited.get(b.id, 0),
              "duplicates": b.duplicates, "on_dnc": b.on_dnc, "invalid": b.invalid, "total_rows": b.total_rows,
              "ai_used": bool(b.ai_used), "default_industry": b.default_industry,
              "created_at": b.created_at.isoformat() + "Z" if b.created_at else None} for b in batches]
+
+
+def audit_batch(batch_id: int, db: Optional[Session] = None) -> None:
+    """Audits every not-yet-audited lead of a batch, one after another. One failing lead does not stop the rest."""
+    from scripts.auditor import audit_lead
+
+    own_session = db is None
+    db = db or SyncSessionLocal()
+    try:
+        ids = [i for (i,) in db.query(Lead.id).filter(Lead.import_batch_id == batch_id, Lead.audited_at.is_(None))]
+        logger.info(f"[import] auditing {len(ids)} lead(s) of batch {batch_id}")
+        for lead_id in ids:
+            try:
+                audit_lead(db.get(Lead, lead_id), db)
+            except Exception as e:                                 # a bad website must not stop the others
+                logger.error(f"[import] audit failed for lead {lead_id}: {e}")
+                db.rollback()
+    finally:
+        if own_session:
+            db.close()
+
+
+@router.post("/{batch_id}/audit", status_code=202)
+def start_audit(batch_id: int, background: BackgroundTasks, db: Session = Depends(get_db)):
+    if not db.get(ImportBatch, batch_id):
+        raise HTTPException(404, "Import not found")
+    pending = db.query(func.count(Lead.id)).filter(Lead.import_batch_id == batch_id, Lead.audited_at.is_(None)).scalar()
+    if not pending:
+        return {"started": False, "pending": 0}
+    background.add_task(audit_batch, batch_id)
+    return {"started": True, "pending": pending}
+
+
+@router.get("/{batch_id}/audit-status")
+def audit_status(batch_id: int, db: Session = Depends(get_db)):
+    if not db.get(ImportBatch, batch_id):
+        raise HTTPException(404, "Import not found")
+    leads = db.query(Lead.audited_at, Lead.tier, Lead.score_incomplete).filter(Lead.import_batch_id == batch_id).all()
+    audited = [row for row in leads if row.audited_at]
+    tiers = [row.tier for row in audited]
+    return {"total": len(leads), "audited": len(audited),
+            "hot": tiers.count(LeadTier.HOT), "warm": tiers.count(LeadTier.WARM), "cold": tiers.count(LeadTier.COLD),
+            "incomplete": sum(1 for row in audited if row.score_incomplete)}
 
 
 @router.delete("/{batch_id}")

@@ -34,6 +34,24 @@ function Chip({ tone, label, value }) {
   );
 }
 
+function AuditSummary({ s }) {
+  const done = s.audited >= s.total;
+  return (
+    <div className="im-audit">
+      <p className="im-help">
+        {done ? `Audit finished: ${s.total} lead${s.total === 1 ? "" : "s"} checked and scored.`
+              : `Checking websites… ${s.audited} of ${s.total} done. You can leave this page; it keeps running.`}
+      </p>
+      <div className="im-chips">
+        <Chip tone="bad" label="Hot (most to fix)" value={s.hot} />
+        <Chip tone="warn" label="Warm" value={s.warm} />
+        <Chip tone="neutral" label="Cold" value={s.cold} />
+        <Chip tone="neutral" label="Not fully checked" value={s.incomplete} />
+      </div>
+    </div>
+  );
+}
+
 export default function Import() {
   const [industries, setIndustries] = useState([]);
   const [tab, setTab] = useState("file");
@@ -52,12 +70,36 @@ export default function Import() {
   const [batches, setBatches] = useState([]);
   const [batchError, setBatchError] = useState("");
   const dropRef = useRef(null);
+  const [auditStatus, setAuditStatus] = useState({});     // batch id -> {total, audited, hot, warm, cold, incomplete}
+  const timers = useRef({});
 
   const labelFor = useMemo(() => Object.fromEntries(industries.map((i) => [i.key, i.label])), [industries]);
 
   const loadBatches = useCallback(() => {
     fetch(`${API}/imports`).then((r) => (r.ok ? r.json() : [])).then(setBatches).catch(() => {});
   }, []);
+
+  const pollAudit = useCallback((batchId) => {
+    clearInterval(timers.current[batchId]);
+    const tick = async () => {
+      const res = await fetch(`${API}/imports/${batchId}/audit-status`).catch(() => null);
+      if (!res?.ok) return;
+      const status = await res.json();
+      setAuditStatus((prev) => ({ ...prev, [batchId]: status }));
+      if (status.audited >= status.total) { clearInterval(timers.current[batchId]); loadBatches(); }
+    };
+    tick();
+    timers.current[batchId] = setInterval(tick, 3000);
+  }, [loadBatches]);
+
+  useEffect(() => () => Object.values(timers.current).forEach(clearInterval), []);
+
+  async function startAudit(batchId) {
+    setBatchError("");
+    const res = await fetch(`${API}/imports/${batchId}/audit`, { method: "POST" });
+    if (!res.ok) { setBatchError(await readError(res)); return; }
+    pollAudit(batchId);
+  }
 
   useEffect(() => {
     fetch(`${API}/imports/industries`).then((r) => (r.ok ? r.json() : [])).then(setIndustries).catch(() => {});
@@ -219,7 +261,17 @@ export default function Import() {
             Skipped: {result.duplicates} duplicate · {result.on_dnc} on the Do-Not-Contact list · {result.invalid} invalid
             {result.skipped ? ` · ${result.skipped} without email` : ""}.
           </p>
-          <Link className="im-btn" to="/admin/leads">View leads</Link>
+          {result.imported > 0 && (
+            auditStatus[result.batch_id]
+              ? <AuditSummary s={auditStatus[result.batch_id]} />
+              : <p className="im-help">Next: check each lead's website for what it is missing (booking, chat, click-to-call...) and score it.</p>
+          )}
+          <div className="im-actions">
+            {result.imported > 0 && !auditStatus[result.batch_id] && (
+              <button className="im-btn" onClick={() => startAudit(result.batch_id)}>Check websites and score these leads</button>
+            )}
+            <Link className={auditStatus[result.batch_id] ? "im-btn" : "im-btn im-btn--ghost"} to="/admin/leads">View leads</Link>
+          </div>
         </section>
       )}
 
@@ -316,7 +368,7 @@ export default function Import() {
         {batches.length === 0 ? <p className="im-help">Nothing imported yet.</p> : (
           <div className="im-table-wrap">
             <table className="im-table">
-              <thead><tr><th>Name</th><th>Source</th><th>Date</th><th>Imported</th><th>In leads now</th><th>Skipped</th><th /></tr></thead>
+              <thead><tr><th>Name</th><th>Source</th><th>Date</th><th>Imported</th><th>In leads now</th><th>Audited</th><th>Skipped</th><th /></tr></thead>
               <tbody>
                 {batches.map((b) => (
                   <tr key={b.id}>
@@ -325,6 +377,14 @@ export default function Import() {
                     <td>{b.created_at ? new Date(b.created_at).toLocaleString() : "—"}</td>
                     <td>{b.imported}</td>
                     <td>{b.leads_now}</td>
+                    <td>
+                      {auditStatus[b.id] && auditStatus[b.id].audited < auditStatus[b.id].total
+                        ? `${auditStatus[b.id].audited} of ${auditStatus[b.id].total}…`
+                        : `${b.audited} of ${b.leads_now}`}
+                      {b.audited < b.leads_now && !auditStatus[b.id] && (
+                        <button className="im-link im-link--pad" onClick={() => startAudit(b.id)}>Audit</button>
+                      )}
+                    </td>
                     <td>{b.duplicates + b.on_dnc + b.invalid}</td>
                     <td>{b.leads_now > 0 && <button className="im-link im-link--bad" onClick={() => undo(b)}>Undo</button>}</td>
                   </tr>

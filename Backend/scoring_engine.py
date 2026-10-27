@@ -45,6 +45,7 @@ class RuleResult:
     status: str           # matched | not_matched | not_checked
     earned: int = 0
     note: str = ""        # why it could not be checked
+    fix: str = ""         # the workflow of ours that addresses it (rule.params["fix"])
 
 
 @dataclass
@@ -67,6 +68,12 @@ class ScoreResult:
     def final(self) -> int:
         return self.base + self.bonus
 
+    def top_gaps(self, limit: int = 3) -> list[dict]:
+        """The base rules that matched, biggest first: what a message to this lead can point at."""
+        matched = [r for r in self.results if r.group == "base" and r.status == MATCHED and r.points > 0]
+        matched.sort(key=lambda r: -r.points)
+        return [{"key": r.key, "label": r.label, "points": r.points, "fix": r.fix} for r in matched[:limit]]
+
     def breakdown(self) -> dict:
         return {
             "profile": {"id": self.profile_id, "name": self.profile_name, "version": self.profile_version},
@@ -75,7 +82,7 @@ class ScoreResult:
             "incomplete": self.incomplete, "on_dnc": self.on_dnc,
             "rules": [
                 {"key": r.key, "label": r.label, "kind": r.kind, "group": r.group,
-                 "points": r.points, "earned": r.earned, "status": r.status, "note": r.note}
+                 "points": r.points, "earned": r.earned, "status": r.status, "note": r.note, "fix": r.fix}
                 for r in self.results
             ],
         }
@@ -176,6 +183,8 @@ def _unmet_requirement(lead: Lead, requires: list[str]) -> Optional[str]:
             return "no email address"
         elif need == "phone" and not lead.phone:
             return "no phone number"
+        elif need == "site_data" and not (lead.attributes or {}).get("site_checked"):
+            return "no website found" if not lead.website else "the website could not be checked"
     return None
 
 
@@ -212,7 +221,8 @@ def score_lead(db: Session, lead: Lead, profile: Optional[IndustryProfile] = Non
         gap = _unmet_requirement(lead, rule.requires)
         if gap:
             data_gaps.add(gap)
-        rr = RuleResult(rule.key, rule.label, rule.kind, rule.group, rule.points, NOT_MATCHED)
+        rr = RuleResult(rule.key, rule.label, rule.kind, rule.group, rule.points, NOT_MATCHED,
+                        fix=str(rule.params.get("fix", "")))
 
         if value:
             rr.status, rr.earned = MATCHED, rule.points
@@ -255,6 +265,11 @@ def score_lead(db: Session, lead: Lead, profile: Optional[IndustryProfile] = Non
 
 def _render_summary(res: ScoreResult) -> str:
     lines = []
+    gaps = res.top_gaps()
+    if gaps:
+        lines.append("BIGGEST OPPORTUNITIES (from what the website shows or lacks):")
+        lines += [f"  • {g['label']} (+{g['points']})" + (f" → we offer: {g['fix']}" if g.get("fix") else "") for g in gaps]
+        lines.append("")
     for r in res.results:
         tag = "" if r.group == "base" else " BONUS"
         if r.status == MATCHED:
@@ -286,5 +301,6 @@ def apply_result(lead: Lead, res: ScoreResult) -> None:
     lead.score_incomplete = res.incomplete
     lead.score_incomplete_reason = res.incomplete_reason
     lead.audited_at = datetime.utcnow()
+    lead.attributes = {**(lead.attributes or {}), "top_gaps": res.top_gaps()}    # a new dict, so the JSON column is saved
     if not res.on_dnc:
         lead.signals = res.signals

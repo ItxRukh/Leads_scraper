@@ -99,11 +99,36 @@ def answer_profile_questions(lead: Lead, config: ProfileConfig) -> None:
 
 # ─── Main Audit Runner ────────────────────────────────────────────────────────
 
-def audit_lead(lead: Lead, db, use_claude: bool = True) -> Lead:
-    """Audit a single lead: crawl if needed, score, save."""
+def _uses_site_signals(config: Optional[ProfileConfig]) -> bool:
+    """True when the profile has rules about what the website offers (booking, chat, click-to-call...)."""
+    return config is not None and any("site_data" in r.requires for r in config.scoring.rules)
 
-    # If website not crawled yet, do it now
-    if lead.website and not lead.website_crawled:
+
+def _collect_site_data(lead: Lead) -> None:
+    """Check the website for booking, chat, click-to-call... and keep the findings on the lead."""
+    from utils.site_signals import collect_site_signals
+
+    data = collect_site_signals(lead.website)
+    if not data:
+        return                                   # unreachable: the rules report "could not be checked"
+    lead.attributes = {**(lead.attributes or {}), **data["facts"]}
+    lead.website_crawled = True
+    lead.crawled_text = data["text"]
+    if data["emails"] and not lead.email:
+        lead.email = data["emails"][0]
+
+
+def audit_lead(lead: Lead, db, use_claude: bool = True) -> Lead:
+    """Audit a single lead: look at its website, score it with its Industry Profile, save."""
+    profile = resolve_profile(db, lead)
+    config = ProfileConfig.model_validate(profile.config) if profile else None
+
+    if lead.website and _uses_site_signals(config):
+        if not (lead.attributes or {}).get("site_checked"):
+            _collect_site_data(lead)
+            db.commit()
+    elif lead.website and not lead.website_crawled:
+        # profiles without website rules keep the original crawler
         from utils.crawler import crawl_website
         crawl_data = crawl_website(lead.website)
         if crawl_data:
@@ -117,8 +142,6 @@ def audit_lead(lead: Lead, db, use_claude: bool = True) -> Lead:
     # AI help: the dropshipping analysis only for profiles that use it, plus
     # whatever "AI question" rules the lead's profile defines
     if use_claude and lead.crawled_text:
-        profile = resolve_profile(db, lead)
-        config = ProfileConfig.model_validate(profile.config) if profile else None
         if config is None or any(r.kind == "builtin" for r in config.scoring.rules):
             enhance_with_claude(lead)
         if config is not None:

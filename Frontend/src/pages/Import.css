@@ -87,3 +87,7 @@
 
 .im-commit { display: flex; align-items: flex-end; gap: 18px; flex-wrap: wrap; margin-top: 16px; }
 .im-commit label:first-child { flex: 1 1 260px; }
+
+.im-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
+.im-audit { margin-top: 8px; }
+.im-link--pad { margin-left: 10px; }

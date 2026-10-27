@@ -184,9 +184,7 @@ def test_text_without_headings_needs_the_ai(db, monkeypatch):
 # ─── saving ──────────────────────────────────────────────────────────────────
 
 def test_save_creates_leads_with_geo_industry_and_greeting_name(seeded_db):
-    db = seeded_db
-    db.add(IndustryProfile(name="HVAC", slug="hvac", config={}, is_active=True))
-    db.commit()
+    db = seeded_db                                  # already holds the industry profiles, "hvac" among them
     out = li.build_preview(db, [
         ["business_name", "contact_name", "email", "phone", "website", "industry", "city", "state"],
         ["Fresh HVAC", "Dana Rivera", "dana@fresh.com", "512-555-0142", "fresh.com", "HVAC", "Austin", "TX"],

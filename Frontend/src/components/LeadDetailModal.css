@@ -94,3 +94,6 @@
 @media (max-width: 480px) {
   .ld-grid { grid-template-columns: 1fr; }
 }
+.ld-gaps { margin: 6px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 5px; font-size: 13px; color: var(--wht); }
+.ld-gaps b { color: var(--or); margin-left: 4px; }
+.ld-fix { display: block; margin-top: 2px; font-size: 12px; color: var(--muted); }

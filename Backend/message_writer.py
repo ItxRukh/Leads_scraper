@@ -47,14 +47,48 @@ def step_intent(steps: list[SequenceStep], step: SequenceStep) -> str:
 
 
 def _observations(lead: Lead) -> list[str]:
-    """What we noticed about the lead: the scoring rules it matched."""
+    """What we noticed about the lead: its biggest gaps, else the other scoring rules it matched."""
+    gaps = [g["label"] + (f" (our matching service: {g['fix']})" if g.get("fix") else "")
+            for g in (lead.attributes or {}).get("top_gaps", []) if g.get("label")]
+    if gaps:
+        return gaps[:3]
     rules = (lead.score_breakdown or {}).get("rules", [])
     return [r["label"] for r in rules if r.get("status") == "matched" and r.get("points", 0) > 0][:4]
 
 
+PRICE_RULE = ("Never state or hint at prices, costs, discounts or dollar amounts. If price comes up, say plans are "
+              "scoped per business and the exact numbers are shared on a short call. Only name a specific software "
+              "product as one we work with if that exact product name appears in the facts above; otherwise say we can "
+              "usually connect to the kind of tool they use and will confirm that product on a short call. Do the same "
+              "for languages, features and results that are not written in the facts.")
+
+
+def _knowledge_section(knowledge: str, heading: str) -> str:
+    """The text under one '## heading' of the knowledge base ('' when absent)."""
+    for block in knowledge.split("\n## ")[1:]:
+        title, _, body = block.partition("\n")
+        if title.lower().startswith(heading.lower()):
+            return body.strip()
+    return ""
+
+
+def _service_facts(knowledge: str, limit: int = 2600) -> str:
+    """For a first email: the problems we fix and the benefits; the full text is for replies."""
+    sections = [(name, _knowledge_section(knowledge, name)) for name in ("The problems we fix", "Benefits for")]
+    return "\n\n".join(f"{name}:\n{body}" for name, body in sections if body)[:limit]
+
+
+_HONORIFICS = {"dr", "mr", "mrs", "ms", "miss", "prof"}
+
+
 def _first_name(lead: Lead) -> Optional[str]:
-    name = (lead.linkedin_name or "").strip()
-    return name.split()[0] if name else None
+    """What to call the contact: 'Dana', or 'Dr. Lee' when the name starts with a title."""
+    words = (lead.linkedin_name or "").split()
+    if not words:
+        return None
+    if words[0].rstrip(".").lower() in _HONORIFICS and len(words) > 1:
+        return f"{words[0].rstrip('.').capitalize()}. {words[-1]}"        # title + surname: "Dr. Chris Lee" -> "Dr. Lee"
+    return words[0]
 
 
 def _clean_json(raw: str) -> dict:
@@ -95,10 +129,15 @@ def write_message(lead: Lead, step: SequenceStep, steps: list[SequenceStep], con
         f"You write outreach messages on behalf of {person or 'a team member'}"
         f"{' at ' + company if company else ''}.\n"
         f"What we offer: {offer.summary or 'a service that helps local businesses'}\n"
+        + (f"Facts about our service you may use (from our website):\n{_service_facts(offer.knowledge)}\n" if offer.knowledge else "")
+        + f"{PRICE_RULE}\n"
         f"Tone: {offer.tone}. Write in this language: {offer.language}.\n"
         "Rules: plain text only, no links, no emojis, no placeholders like [Name], never invent facts "
         "or numbers, never claim to have visited their premises. Do not write a signature or an "
         "opt-out line; they are added automatically.\n"
+        "The 'things we noticed' come from an automatic look at their website, so word them as what you "
+        "could not find (for example: \"I couldn't find a way to book online on your site\"), never as certain "
+        "facts. Mention at most two, and tie them to a lost call, booking or follow-up that the offer fixes.\n"
         + ("Return ONLY JSON: {\"subject\": \"...\", \"body\": \"...\"}" if is_email
            else "Return ONLY the message text.")
     )
@@ -165,6 +204,8 @@ def write_reply(lead: Lead, channel: str, their_text: str, label: str, config: P
         f"{' at ' + company if company else ''}.\n"
         f"What we offer: {offer.summary or 'a service that helps local businesses'}\n"
         f"FAQ:\n{offer.faq or '(none)'}\n"
+        + (f"Knowledge base (answer only from this and the FAQ):\n{offer.knowledge}\n" if offer.knowledge else "")
+        + f"{PRICE_RULE}\n"
         f"Tone: {offer.tone}. Write in this language: {offer.language}.\n"
         "Rules: plain text only, no emojis, no placeholders like [Name], never invent facts, prices, "
         "results or promises. Do not write a signature; it is added automatically.\n"
