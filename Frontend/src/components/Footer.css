@@ -13,7 +13,7 @@
 .ft-logo {
   font-size: 13px;
   font-weight: 800;
-  color: rgba(var(--ov),0.35);
+  color: var(--tx-30);
   letter-spacing: 0.02em;
   font-family: var(--font);
   flex-shrink: 0;

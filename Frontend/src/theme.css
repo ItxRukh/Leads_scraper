@@ -36,6 +36,14 @@
   --bdr2:       rgba(219, 214, 232, 0.06);
   --ov:         255, 255, 255;      /* rgba(var(--ov), a) = soft overlay on a surface */
 
+  /* text strengths (dimmest to strongest): same look as the old rgba(var(--ov), a) text */
+  --tx-20:      rgba(255, 255, 255, 0.2);
+  --tx-30:      rgba(255, 255, 255, 0.3);
+  --tx-40:      rgba(255, 255, 255, 0.4);
+  --tx-50:      rgba(255, 255, 255, 0.5);
+  --tx-60:      rgba(255, 255, 255, 0.6);
+  --tx-70:      rgba(255, 255, 255, 0.72);
+
   /* status colours */
   --ok:         #4ade80;  --ok-rgb:   74, 222, 128;
   --bad:        #f87171;  --bad-rgb:  248, 113, 113;
@@ -53,7 +61,7 @@
   --or-rgb:     109, 40, 217;
   --or-dim:     rgba(109, 40, 217, 0.12);
   --or-hover:   rgba(109, 40, 217, 0.07);
-  --or-2:       #7c3aed;
+  --or-2:       #5b21b6;
   --or-dark:    #5b21b6;
   --on-accent:  #ffffff;
 
@@ -66,15 +74,23 @@
 
   --wht:        #16131f;
   --muted:      #5f5873;
-  --muted2:     #8a839c;
+  --muted2:     #625b76;
   --bdr:        rgba(22, 19, 31, 0.12);
   --bdr2:       rgba(22, 19, 31, 0.07);
   --ov:         22, 19, 31;
 
-  --ok:         #15803d;  --ok-rgb:   22, 163, 74;
-  --bad:        #dc2626;  --bad-rgb:  220, 38, 38;
-  --warn:       #b45309;  --warn-rgb: 217, 119, 6;
-  --info:       #2563eb;  --info-rgb: 37, 99, 235;
+  /* text strengths: every step is dark enough to read (at least 4.5:1 on white and on the page background) */
+  --tx-20:      #625b76;
+  --tx-30:      #625b76;
+  --tx-40:      #5c556f;
+  --tx-50:      #5f5873;
+  --tx-60:      #514a65;
+  --tx-70:      #3d3750;
+
+  --ok:         #166534;  --ok-rgb:   22, 163, 74;
+  --bad:        #a31515;  --bad-rgb:  220, 38, 38;
+  --warn:       #92400e;  --warn-rgb: 217, 119, 6;
+  --info:       #1d4ed8;  --info-rgb: 37, 99, 235;
 
   --shadow:     0 18px 40px rgba(60, 40, 120, 0.14);
 }

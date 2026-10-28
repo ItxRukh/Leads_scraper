@@ -236,7 +236,7 @@ function CitySearch({ value, onChange, placeholder = "City..." }) {
             style={{
               position: "absolute", right: 9, top: "50%",
               transform: "translateY(-50%)", fontSize: 13,
-              color: "rgba(var(--ov),0.3)", pointerEvents: "none",
+              color: "var(--tx-30)", pointerEvents: "none",
             }}
           />
         )}
@@ -384,12 +384,13 @@ function StatCard({ icon, color, bg, label, value, sub, loading }) {
 function ScoreBar({ score, incomplete, incompleteReason }) {
   const s = score ?? 0;
   const color = s >= 85 ? "#7c3aed" : s >= 40 ? "#f59e0b" : "#3b82f6";
+  const textColor = s >= 85 ? "var(--or-2)" : s >= 40 ? "var(--warn)" : "var(--info)";
   return (
     <div className="score-bar-wrap">
       <div className="score-track">
         <div className="score-fill" style={{ width: `${Math.min(s, 100)}%`, background: color }} />
       </div>
-      <span className="score-num" style={{ color }}>{s}</span>
+      <span className="score-num" style={{ color: textColor }}>{s}</span>
       {incomplete && (
         <i
           className="ti ti-alert-triangle score-incomplete-icon"
@@ -877,7 +878,7 @@ export default function Leads() {
             {chartLoad ? (
               <div className="chart-skeleton" />
             ) : nicheData.length === 0 ? (
-              <div style={{ color: "rgba(var(--ov),0.2)", fontSize: 12, textAlign: "center", paddingTop: 40 }}>
+              <div style={{ color: "var(--tx-20)", fontSize: 12, textAlign: "center", paddingTop: 40 }}>
                 No data yet — run scraper first
               </div>
             ) : (
@@ -913,7 +914,7 @@ export default function Leads() {
             {chartLoad ? (
               <div className="chart-skeleton" />
             ) : tierData.every((t) => t.value === 0) ? (
-              <div style={{ color: "rgba(var(--ov),0.2)", fontSize: 12, textAlign: "center", paddingTop: 40 }}>
+              <div style={{ color: "var(--tx-20)", fontSize: 12, textAlign: "center", paddingTop: 40 }}>
                 No scored leads yet
               </div>
             ) : (
@@ -997,7 +998,7 @@ export default function Leads() {
             {chartLoad ? (
               <div className="chart-skeleton" />
             ) : timeData.every((d) => d.value === 0) ? (
-              <div style={{ color: "rgba(var(--ov),0.2)", fontSize: 12, textAlign: "center", paddingTop: 40 }}>
+              <div style={{ color: "var(--tx-20)", fontSize: 12, textAlign: "center", paddingTop: 40 }}>
                 No data yet — run scraper first
               </div>
             ) : (
@@ -1287,7 +1288,7 @@ export default function Leads() {
               <div style={{
                 background: "rgba(124,58,237,0.06)", border: "1px solid rgba(124,58,237,0.15)",
                 borderRadius: 10, padding: "10px 14px", fontSize: 11.5,
-                color: "rgba(var(--ov),0.4)", display: "flex", gap: 8, alignItems: "flex-start",
+                color: "var(--tx-40)", display: "flex", gap: 8, alignItems: "flex-start",
               }}>
                 <i className="ti ti-info-circle" style={{ color: "#7c3aed", marginTop: 1, flexShrink: 0 }} />
                 <span>
@@ -1419,28 +1420,28 @@ export default function Leads() {
                     padding: "10px 12px", textAlign: "center",
                   }}>
                     <div style={{ fontSize: 20, fontWeight: 700 }}>{postScrapeJob.summary.total_found}</div>
-                    <div style={{ fontSize: 10.5, color: "#999" }}>Found</div>
+                    <div style={{ fontSize: 10.5, color: "var(--muted2)" }}>Found</div>
                   </div>
                   <div style={{
                     flex: "1 1 100px", background: "rgba(46,204,113,0.08)", borderRadius: 10,
                     padding: "10px 12px", textAlign: "center",
                   }}>
                     <div style={{ fontSize: 20, fontWeight: 700, color: "#2ecc71" }}>{postScrapeJob.summary.total_created}</div>
-                    <div style={{ fontSize: 10.5, color: "#999" }}>Added as leads</div>
+                    <div style={{ fontSize: 10.5, color: "var(--muted2)" }}>Added as leads</div>
                   </div>
                   <div style={{
                     flex: "1 1 100px", background: "rgba(124,58,237,0.08)", borderRadius: 10,
                     padding: "10px 12px", textAlign: "center",
                   }}>
                     <div style={{ fontSize: 20, fontWeight: 700, color: "#7c3aed" }}>{postScrapeJob.summary.total_skipped}</div>
-                    <div style={{ fontSize: 10.5, color: "#999" }}>Skipped</div>
+                    <div style={{ fontSize: 10.5, color: "var(--muted2)" }}>Skipped</div>
                   </div>
                 </div>
               )}
 
               {postScrapeJob.summary && postScrapeJob.summary.total_skipped > 0 && (
                 <div style={{
-                  fontSize: 11, color: "#999", marginBottom: 14, display: "flex",
+                  fontSize: 11, color: "var(--muted2)", marginBottom: 14, display: "flex",
                   flexDirection: "column", gap: 3,
                 }}>
                   {postScrapeJob.summary.skip_reasons.low_rating_or_reviews > 0 && (
@@ -1466,7 +1467,7 @@ export default function Leads() {
               <div style={{
                 background: "rgba(124,58,237,0.06)", border: "1px solid rgba(124,58,237,0.15)",
                 borderRadius: 10, padding: "10px 14px", fontSize: 11.5,
-                color: "rgba(var(--ov),0.4)", display: "flex", gap: 8, alignItems: "flex-start", marginTop: 12,
+                color: "var(--tx-40)", display: "flex", gap: 8, alignItems: "flex-start", marginTop: 12,
               }}>
                 <i className="ti ti-info-circle" style={{ color: "#7c3aed", marginTop: 1, flexShrink: 0 }} />
                 <span>

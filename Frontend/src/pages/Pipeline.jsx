@@ -25,6 +25,9 @@ const STAGES = [
   { key: "dnc",               label: "DNC",               color: "#374151", icon: "ti-ban"             },
 ];
 
+// text in a stage colour: mixed with the theme's text colour, so it stays readable in both themes
+const tint = (c) => `color-mix(in srgb, ${c} 55%, var(--wht))`;
+
 const STAGE_MAP = Object.fromEntries(STAGES.map(s => [s.key, s]));
 
 const KANBAN_STAGES = STAGES.filter(s =>
@@ -61,7 +64,7 @@ const CUSTOM_TOOLTIP = ({ active, payload, label }) => {
     <div className="chart-tooltip">
       <div className="ct-label">{label}</div>
       {payload.map((p, i) => (
-        <div key={i} className="ct-val" style={{ color: p.color ?? "var(--wht)" }}>
+        <div key={i} className="ct-val" style={{ color: p.color ? tint(p.color) : "var(--wht)" }}>
           {p.name}: <b>{p.value?.toLocaleString()}</b>
         </div>
       ))}
@@ -80,7 +83,7 @@ function LeadCard({ lead, onStageChange, dragging, onDragStart, onDragEnd }) {
     >
       <div className="kc-top">
         <div className="kc-name">{lead.name}</div>
-        <span className="kc-tier" style={{ background: `${tierColor(lead.tier)}22`, color: tierColor(lead.tier) }}>
+        <span className="kc-tier" style={{ background: `${tierColor(lead.tier)}22`, color: tint(tierColor(lead.tier)) }}>
           {lead.tier ?? "—"}
         </span>
       </div>
@@ -102,7 +105,7 @@ function LeadCard({ lead, onStageChange, dragging, onDragStart, onDragEnd }) {
           value={lead.pipeline_stage ?? "scraped"}
           onChange={e => onStageChange(lead.id, e.target.value)}
           onClick={e => e.stopPropagation()}
-          style={{ color: stage.color, borderColor: `${stage.color}44` }}
+          style={{ color: tint(stage.color), borderColor: `${stage.color}44` }}
         >
           {STAGES.map(s => (
             <option key={s.key} value={s.key}>{s.label}</option>
@@ -265,7 +268,7 @@ export default function Pipeline() {
           label="Demo booked" value={demoBooked} sub="Ready to onboard" loading={chartLoad} />
         <StatCard icon="ti-check-circle" color="#4ade80" bg="rgba(74,222,128,0.1)"
           label="Onboarded" value={onboarded}
-          sub={<><b style={{ color: "#4ade80" }}>{convRate}%</b> conversion rate</>}
+          sub={<><b style={{ color: "var(--ok)" }}>{convRate}%</b> conversion rate</>}
           loading={chartLoad} />
       </div>
 
@@ -314,7 +317,7 @@ export default function Pipeline() {
                       <div className="funnel-bar-wrap">
                         <div className="funnel-bar-fill" style={{ width: `${pct}%`, background: item.color }} />
                       </div>
-                      <div className="funnel-val" style={{ color: item.color }}>{item.value.toLocaleString()}</div>
+                      <div className="funnel-val" style={{ color: tint(item.color) }}>{item.value.toLocaleString()}</div>
                     </div>
                   );
                 })}
@@ -363,10 +366,10 @@ export default function Pipeline() {
                 >
                   <div className="kanban-col-header" style={{ borderTopColor: stage.color }}>
                     <div className="kch-left">
-                      <i className={`ti ${stage.icon}`} style={{ color: stage.color }} />
+                      <i className={`ti ${stage.icon}`} style={{ color: tint(stage.color) }} />
                       <span className="kch-label">{stage.label}</span>
                     </div>
-                    <span className="kch-count" style={{ background: `${stage.color}22`, color: stage.color }}>
+                    <span className="kch-count" style={{ background: `${stage.color}22`, color: tint(stage.color) }}>
                       {summary[stage.key] ?? 0}
                     </span>
                   </div>
@@ -438,12 +441,12 @@ export default function Pipeline() {
                             </div>
                           </td>
                           <td>
-                            <span className="pipeline-stage-badge" style={{ background: `${stage.color}18`, color: stage.color, border: `1px solid ${stage.color}33` }}>
+                            <span className="pipeline-stage-badge" style={{ background: `${stage.color}18`, color: tint(stage.color), border: `1px solid ${stage.color}33` }}>
                               <i className={`ti ${stage.icon}`} />{stage.label}
                             </span>
                           </td>
                           <td>
-                            <span className="tier-badge" style={{ background: `${tierColor(lead.tier)}18`, color: tierColor(lead.tier) }}>
+                            <span className="tier-badge" style={{ background: `${tierColor(lead.tier)}18`, color: tint(tierColor(lead.tier)) }}>
                               {lead.tier ?? "—"}
                             </span>
                           </td>
@@ -457,13 +460,13 @@ export default function Pipeline() {
                           <td className="dim-cell">{lead.city ?? "—"}</td>
                           <td className="dim-cell">
                             {lead.email_verified
-                              ? <span style={{ color: "#4ade80" }}>✓ {lead.email}</span>
-                              : <span style={{ color: "rgba(var(--ov),0.3)" }}>{lead.email ?? "—"}</span>}
+                              ? <span style={{ color: "var(--ok)" }}>✓ {lead.email}</span>
+                              : <span style={{ color: "var(--tx-30)" }}>{lead.email ?? "—"}</span>}
                           </td>
                           <td className="date-cell">{formatDate(lead.updated_at)}</td>
                           <td>
                             <select className="stage-quick-select" value={lead.pipeline_stage ?? "scraped"}
-                              onChange={e => handleStageChange(lead.id, e.target.value)} style={{ color: stage.color }}>
+                              onChange={e => handleStageChange(lead.id, e.target.value)} style={{ color: tint(stage.color) }}>
                               {STAGES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
                             </select>
                           </td>

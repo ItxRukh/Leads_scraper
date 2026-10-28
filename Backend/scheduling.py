@@ -432,6 +432,7 @@ def schedule_info(entry: OutreachQueueEntry, lead: Lead, s: ScheduleSettings,
         "next_step_key": entry.next_step_key,
         "next_step_label": (step.label or step.key) if step else None,
         "next_channel": entry.next_channel,
+        "last_done_at": entry.last_done_at.isoformat() + "Z" if entry.last_done_at else None,
         "next_due_at": entry.next_due_at.isoformat() + "Z" if entry.next_due_at else None,
         "due_now": bool(entry.next_due_at and entry.next_due_at <= now and entry.status == "queued"
                         and entry.sequence_status == ACTIVE),

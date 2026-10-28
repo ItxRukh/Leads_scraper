@@ -8,7 +8,7 @@
   gap: 16px;
 }
 
-.oq-hint { font-size: 11px; color: rgba(var(--ov),0.3); line-height: 1.5; }
+.oq-hint { font-size: 11px; color: var(--tx-30); line-height: 1.5; }
 
 /* ── notices ── */
 .oq-notice {
@@ -38,11 +38,11 @@
   justify-content: space-between;
   font-size: 12px;
   font-weight: 700;
-  color: rgba(var(--ov),0.75);
+  color: var(--tx-70);
   margin-bottom: 6px;
 }
 .oq-ch-head i { color: var(--or); margin-right: 4px; }
-.oq-ch-body { font-size: 12px; color: rgba(var(--ov),0.5); }
+.oq-ch-body { font-size: 12px; color: var(--tx-50); }
 .oq-ch-body b { color: var(--wht); font-size: 15px; }
 
 /* ── mode badges ── */
@@ -54,7 +54,7 @@
   border-radius: 20px;
   white-space: nowrap;
 }
-.oq-mode--manual   { background: rgba(var(--ov),0.06); color: rgba(var(--ov),0.55); border: 1px solid rgba(var(--ov),0.1); }
+.oq-mode--manual   { background: rgba(var(--ov),0.06); color: var(--tx-50); border: 1px solid rgba(var(--ov),0.1); }
 .oq-mode--assisted { background: rgba(var(--warn-rgb),0.1);   color: var(--warn); border: 1px solid rgba(var(--warn-rgb),0.2); }
 .oq-mode--auto     { background: rgba(var(--ok-rgb),0.1);   color: var(--ok); border: 1px solid rgba(var(--ok-rgb),0.2); }
 
@@ -62,13 +62,13 @@
 .oq-search { width: 150px; cursor: text; }
 
 /* ── table cells ── */
-.oq-name { font-size: 13px; font-weight: 700; color: rgba(var(--ov),0.88); }
-.oq-sub  { font-size: 11px; color: rgba(var(--ov),0.3); margin-top: 2px; }
+.oq-name { font-size: 13px; font-weight: 700; color: var(--tx-70); }
+.oq-sub  { font-size: 11px; color: var(--tx-30); margin-top: 2px; }
 .oq-contact { display: flex; flex-direction: column; gap: 1px; margin-top: 4px; }
-.oq-contact span { font-size: 11px; color: rgba(var(--ov),0.45); display: flex; align-items: center; gap: 5px; }
-.oq-contact i { font-size: 11px; color: rgba(var(--ov),0.25); }
+.oq-contact span { font-size: 11px; color: var(--tx-40); display: flex; align-items: center; gap: 5px; }
+.oq-contact i { font-size: 11px; color: var(--tx-20); }
 
-.oq-step { font-size: 12.5px; font-weight: 600; color: rgba(var(--ov),0.8); display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.oq-step { font-size: 12.5px; font-weight: 600; color: var(--tx-70); display: flex; align-items: center; gap: 6px; white-space: nowrap; }
 .oq-step i { color: var(--or); font-size: 14px; }
 .oq-stop { font-size: 11.5px; color: var(--bad); display: inline-flex; align-items: center; gap: 5px; }
 
@@ -80,7 +80,7 @@
   padding: 2px 9px;
   border-radius: 20px;
   background: rgba(var(--ov),0.06);
-  color: rgba(var(--ov),0.55);
+  color: var(--tx-50);
   border: 1px solid rgba(var(--ov),0.1);
 }
 .oq-reply--good { background: rgba(var(--ok-rgb),0.1);  color: var(--ok); border-color: rgba(var(--ok-rgb),0.2); }
@@ -88,12 +88,12 @@
 .oq-reply--bad  { background: rgba(var(--bad-rgb),0.1); color: var(--bad); border-color: rgba(var(--bad-rgb),0.2); }
 
 .oq-check { display: flex !important; align-items: center; gap: 8px; text-transform: none !important; letter-spacing: 0 !important;
-  font-size: 12px !important; color: rgba(var(--ov),0.7) !important; height: 36px; cursor: pointer; }
+  font-size: 12px !important; color: var(--tx-70) !important; height: 36px; cursor: pointer; }
 .oq-check input { accent-color: var(--or); }
 
-.oq-due { font-size: 12px; color: rgba(var(--ov),0.55); white-space: nowrap; }
+.oq-due { font-size: 12px; color: var(--tx-50); white-space: nowrap; }
 .oq-due--now { color: var(--ok); font-weight: 700; }
-.oq-local { font-size: 12px; font-weight: 600; color: rgba(var(--ov),0.7); }
+.oq-local { font-size: 12px; font-weight: 600; color: var(--tx-70); }
 
 .oq-actions { display: flex; gap: 6px; }
 .oq-btn {
@@ -102,7 +102,7 @@
   border-radius: 8px;
   border: 1px solid rgba(var(--ov),0.1);
   background: rgba(var(--ov),0.05);
-  color: rgba(var(--ov),0.6);
+  color: var(--tx-60);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -150,7 +150,7 @@
   border-radius: 8px;
   border: 1px solid rgba(var(--ov),0.1);
   background: rgba(var(--ov),0.04);
-  color: rgba(var(--ov),0.45);
+  color: var(--tx-40);
   font-size: 11.5px;
   font-weight: 600;
   cursor: pointer;
@@ -168,12 +168,12 @@
   border-radius: 12px;
   padding: 12px;
 }
-.oq-channel-name { font-size: 12.5px; font-weight: 700; color: rgba(var(--ov),0.8); display: flex; align-items: center; gap: 6px; }
+.oq-channel-name { font-size: 12.5px; font-weight: 700; color: var(--tx-70); display: flex; align-items: center; gap: 6px; }
 .oq-channel-name i { color: var(--or); }
 .oq-channel-grid { display: grid; grid-template-columns: 1fr 1.4fr 1fr; gap: 10px; }
 .oq-gap { display: flex; align-items: center; gap: 6px; }
 .oq-gap input { width: 100%; min-width: 0; }
-.oq-gap span { font-size: 11px; color: rgba(var(--ov),0.3); }
+.oq-gap span { font-size: 11px; color: var(--tx-30); }
 
 .oq-modal .form-group input[type="time"],
 .oq-modal .form-group input[type="number"] { color-scheme: dark; }
@@ -184,3 +184,5 @@
   .oq-channel-grid { grid-template-columns: 1fr; }
   .oq-modal .form-row { grid-template-columns: 1fr; }
 }
+
+.oq-instantly { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700; color: var(--info); }

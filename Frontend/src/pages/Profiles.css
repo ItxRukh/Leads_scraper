@@ -25,10 +25,10 @@
 .pf-notice--err { background: rgba(var(--bad-rgb),0.08); border: 1px solid rgba(var(--bad-rgb),0.2);  color: var(--bad); }
 
 /* ── table cells ── */
-.pf-name { font-size: 13px; font-weight: 700; color: rgba(var(--ov),0.88); }
+.pf-name { font-size: 13px; font-weight: 700; color: var(--tx-70); }
 .pf-desc {
   font-size: 11px;
-  color: rgba(var(--ov),0.3);
+  color: var(--tx-30);
   margin-top: 2px;
   max-width: 320px;
   overflow: hidden;
@@ -38,7 +38,7 @@
 .pf-code {
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 11.5px;
-  color: rgba(var(--ov),0.55);
+  color: var(--tx-50);
   background: rgba(var(--ov),0.05);
   border-radius: 6px;
   padding: 2px 7px;
@@ -64,7 +64,7 @@
   border-radius: 8px;
   border: 1px solid rgba(var(--ov),0.1);
   background: rgba(var(--ov),0.05);
-  color: rgba(var(--ov),0.6);
+  color: var(--tx-60);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -92,7 +92,7 @@
 }
 .pf-body > .pf-section:first-child { border-top: none; padding-top: 0; }
 
-.pf-hint { font-size: 11px; color: rgba(var(--ov),0.3); line-height: 1.5; }
+.pf-hint { font-size: 11px; color: var(--tx-30); line-height: 1.5; }
 .pf-mono { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
 
 /* inputs the shared .form-group rule does not style */
@@ -113,7 +113,7 @@
 }
 .pf-textarea { resize: vertical; }
 .pf-input::placeholder,
-.pf-textarea::placeholder { color: rgba(var(--ov),0.2); }
+.pf-textarea::placeholder { color: var(--tx-20); }
 .pf-input:focus,
 .pf-textarea:focus { border-color: rgba(var(--or-rgb),0.6); background: rgba(var(--ov),0.08); }
 .pf-select { width: 100%; height: 36px; padding: 0 12px; }
@@ -122,7 +122,7 @@
 .pf-rules-head { display: flex; }
 .pf-empty-rules {
   font-size: 12px;
-  color: rgba(var(--ov),0.3);
+  color: var(--tx-30);
   border: 1px dashed rgba(var(--ov),0.12);
   border-radius: 10px;
   padding: 14px;
@@ -161,9 +161,9 @@
   align-items: center;
   gap: 10px;
   font-size: 11px;
-  color: rgba(var(--ov),0.35);
+  color: var(--tx-30);
 }
-.pf-check { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; color: rgba(var(--ov),0.55); }
+.pf-check { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; color: var(--tx-50); }
 .pf-check input { accent-color: var(--or); }
 
 .pf-add-rule { align-self: flex-start; }
@@ -198,7 +198,7 @@
   align-items: center;
   gap: 6px;
   font-size: 11px;
-  color: rgba(var(--ov),0.4);
+  color: var(--tx-40);
   white-space: nowrap;
 }
 .pf-step-days { width: 64px; text-align: center; }

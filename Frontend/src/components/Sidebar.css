@@ -63,7 +63,7 @@
   text-decoration: none;
   font-size: 12.5px;
   font-family: var(--font);
-  color: rgba(var(--ov),0.5);
+  color: var(--tx-50);
   font-weight: 500;
   transition: background 0.15s, color 0.15s;
   border-right: 2px solid transparent;
@@ -71,7 +71,7 @@
 }
 .sb-item:hover {
   background: rgba(var(--ov),0.04);
-  color: rgba(var(--ov),0.85);
+  color: var(--tx-70);
 }
 .sb-item.active {
   background: var(--or-dim);
@@ -135,7 +135,7 @@
     background: none;
     border: none;
     cursor: pointer;
-    color: rgba(var(--ov),0.4);
+    color: var(--tx-40);
     font-size: 18px;
     transition: color 0.15s;
   }

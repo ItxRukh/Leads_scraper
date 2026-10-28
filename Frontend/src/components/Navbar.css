@@ -49,7 +49,7 @@
 .nb-icon-btn:hover { border-color: rgba(var(--or-rgb),0.4); }
 .nb-icon-btn i {
   font-size: 16px;
-  color: rgba(var(--ov),0.55);
+  color: var(--tx-50);
 }
 .nb-notif-dot {
   position: absolute;
@@ -104,7 +104,7 @@
   font-family: var(--font);
   font-size: 12.5px;
   line-height: 1.5;
-  color: rgba(var(--ov),0.45);
+  color: var(--tx-40);
   text-align: center;
 }
 
@@ -173,7 +173,7 @@
 .nb-notif-item-time {
   font-family: var(--font);
   font-size: 10.5px;
-  color: rgba(var(--ov),0.35);
+  color: var(--tx-30);
   flex-shrink: 0;
 }
 
@@ -188,7 +188,7 @@
 .nb-notif-item-preview {
   font-family: var(--font);
   font-size: 12px;
-  color: rgba(var(--ov),0.55);
+  color: var(--tx-50);
   margin-top: 2px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -278,7 +278,7 @@
 .nb-modal-sub {
   font-family: var(--font);
   font-size: 11.5px;
-  color: rgba(var(--ov),0.4);
+  color: var(--tx-40);
   margin-top: 3px;
 }
 
@@ -288,7 +288,7 @@
   border-radius: 7px;
   background: var(--blk3);
   border: 1px solid var(--bdr);
-  color: rgba(var(--ov),0.6);
+  color: var(--tx-60);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -303,7 +303,7 @@
   font-family: var(--font);
   font-size: 13.5px;
   line-height: 1.6;
-  color: rgba(var(--ov),0.85);
+  color: var(--tx-70);
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -348,7 +348,7 @@
     border: 1px solid var(--bdr);
     cursor: pointer;
     flex-shrink: 0;
-    color: rgba(var(--ov),0.7);
+    color: var(--tx-70);
     font-size: 18px;
     transition: border-color 0.15s, color 0.15s;
   }

@@ -250,7 +250,7 @@ function CitySearch({ value, onChange, placeholder = "City..." }) {
             style={{
               position: "absolute", right: 9, top: "50%",
               transform: "translateY(-50%)", fontSize: 13,
-              color: "rgba(var(--ov),0.3)", pointerEvents: "none",
+              color: "var(--tx-30)", pointerEvents: "none",
             }}
           />
         )}

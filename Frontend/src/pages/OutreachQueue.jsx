@@ -397,6 +397,7 @@ export default function OutreachQueue() {
                     const ch = CHANNEL_META[it.next_channel];
                     const stopped = it.sequence_status === "stopped";
                     const finished = it.sequence_status === "completed";
+                    const withInstantly = it.sequence_status === "handed_off";
                     return (
                       <tr key={it.lead_id}>
                         <td>
@@ -426,6 +427,14 @@ export default function OutreachQueue() {
                               )}
                               {it.revisit_at && <div className="oq-sub">Back on {shortDate(it.revisit_at)}</div>}
                             </>
+                          ) : withInstantly ? (
+                            <>
+                              <span className="oq-instantly"><i className="ti ti-send" /> With Instantly</span>
+                              <div className="oq-sub">
+                                Handed over{it.last_done_at ? ` ${shortDate(it.last_done_at)}` : ""}. It sends the {it.step_total - 1} follow-ups
+                                itself and stops if the lead replies.
+                              </div>
+                            </>
                           ) : finished ? (
                             <span className="oq-sub">Sequence finished</span>
                           ) : ch ? (
@@ -436,7 +445,7 @@ export default function OutreachQueue() {
                           ) : <span className="oq-sub">—</span>}
                         </td>
                         <td>
-                          {stopped || finished || !it.next_due_at ? <span className="oq-sub">—</span> : (
+                          {stopped || finished || withInstantly || !it.next_due_at ? <span className="oq-sub">—</span> : (
                             <span className={`oq-due ${it.due_now ? "oq-due--now" : ""}`}>
                               {whenText(it.next_due_at, it.due_now)}
                             </span>
@@ -450,12 +459,13 @@ export default function OutreachQueue() {
                           </div>
                         </td>
                         <td>
-                          {it.mode && !stopped && !finished
+                          {it.mode && !stopped && !finished && !withInstantly
                             ? <span className={`oq-mode oq-mode--${it.mode}`}>{MODES.find(m => m.value === it.mode)?.label}</span>
                             : <span className="oq-sub">—</span>}
                         </td>
                         <td>
                           <div className="oq-actions">
+                            {withInstantly && <span className="oq-sub" title="Pause or stop it in Instantly, or press Do not contact on the lead">Managed in Instantly</span>}
                             {status === "queued" && it.sequence_status === "active" && it.next_step_key && (
                               <>
                                 <button className="oq-btn oq-btn--ok" title="This step is done: plan the next one"
@@ -468,7 +478,7 @@ export default function OutreachQueue() {
                                 </button>
                               </>
                             )}
-                            {status === "queued" && (
+                            {status === "queued" && !withInstantly && (
                               <button className="oq-btn" title="Pause" onClick={() => act(it.lead_id, "pause")}>
                                 <i className="ti ti-player-pause" />
                               </button>
@@ -478,7 +488,7 @@ export default function OutreachQueue() {
                                 <i className="ti ti-player-play" />
                               </button>
                             )}
-                            {status === "removed" ? (
+                            {withInstantly ? null : status === "removed" ? (
                               <button className="oq-btn oq-btn--ok" title="Add back to the queue"
                                       onClick={() => act(it.lead_id, "add", "Added back to the queue")}>
                                 <i className="ti ti-arrow-back-up" />

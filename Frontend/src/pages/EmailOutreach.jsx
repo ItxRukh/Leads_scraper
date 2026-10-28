@@ -577,12 +577,12 @@ export default function EmailOutreach() {
                         <td className="date-cell">
                           {log.replied_at
                             ? <span style={{ color: "#4ade80" }}>{formatDate(log.replied_at)}</span>
-                            : <span style={{ color: "rgba(var(--ov),0.2)" }}>—</span>}
+                            : <span style={{ color: "var(--tx-20)" }}>—</span>}
                         </td>
                         <td>
                           {log.campaign_id
                             ? <span className="stage-badge">{log.campaign_id}</span>
-                            : <span style={{ color: "rgba(var(--ov),0.2)" }}>—</span>}
+                            : <span style={{ color: "var(--tx-20)" }}>—</span>}
                         </td>
                         <td>
                           <div className="row-actions">
