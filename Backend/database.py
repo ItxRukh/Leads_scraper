@@ -36,7 +36,7 @@ from typing import Optional, Generator
 from loguru import logger
 from sqlalchemy import (
     create_engine, Column, Integer, String, Float, Boolean,
-    DateTime, Text, Enum as SAEnum, ForeignKey, Index, JSON
+    DateTime, Text, Enum as SAEnum, ForeignKey, Index, JSON, func
 )
 from sqlalchemy.orm import DeclarativeBase, Session, relationship, sessionmaker
 
@@ -846,7 +846,7 @@ class LeadCRUD:
                           tier: LeadTier = None, min_score: int = None,
                           q: str = None, pipeline_stage: PipelineStage = None,
                           year: int = None, month: int = None,
-                          stuck_only: bool = False,
+                          stuck_only: bool = False, batch_id: int = None,
                           skip: int = 0, limit: int = 100) -> tuple[list[Lead], int]:
         """
         Same filters as search(), but does pagination at the SQL level
@@ -863,6 +863,8 @@ class LeadCRUD:
         First-Touch Routing already reaches those via SMS/call.)
         """
         query = db.query(Lead)
+        if batch_id is not None:
+            query = query.filter(Lead.import_batch_id == batch_id)
         if niche:
             query = query.filter(Lead.niche.ilike(f"%{niche}%"))
         if city:
@@ -897,7 +899,7 @@ class LeadCRUD:
 
         total = query.count()
         leads = (
-            query.order_by(Lead.final_score.desc())
+            query.order_by(func.coalesce(Lead.import_batch_id, 0).desc(), Lead.id.asc())   # newest import first, in the order pasted
             .offset(skip)
             .limit(limit)
             .all()

@@ -1,15 +1,5 @@
 {
   "companyName": "Leadwren",
-  "sendProvider": "instantly",
   "adminName": "",
-  "maxLeads": 50,
-  "autoAudit": true,
-  "hotThreshold": 70,
-  "warmThreshold": 40,
-  "exportFormat": "json",
-  "queueMinTier": "warm",
-  "autoExport": false,
-  "digestReadAt": "2026-10-27T15:52:15.479116",
-  "timezone": "Europe/London",
-  "autoTier": true
+  "sendProvider": "ghl"
 }

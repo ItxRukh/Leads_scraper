@@ -48,8 +48,12 @@ _EARLY_STAGES = (PipelineStage.SCRAPED, PipelineStage.LINKEDIN_ENRICHED,
 
 
 def send_provider() -> str:
-    """'instantly' (hand leads and their emails to an Instantly campaign) or 'smtp' (send from the Gmail account)."""
-    return "instantly" if get_app_settings().get("sendProvider") == "instantly" else "smtp"
+    """
+    'ghl' (the first email is prepared here and the lead goes to GoHighLevel, which sends), 'instantly' (hand leads
+    and their emails to an Instantly campaign) or 'smtp' (send from the Gmail account).
+    """
+    provider = get_app_settings().get("sendProvider")
+    return provider if provider in ("ghl", "instantly") else "smtp"
 
 
 def _not_followup():
@@ -101,6 +105,8 @@ def ensure_drafts(db: Session, now: Optional[datetime] = None, limit: int = MAX_
                   rng: Optional[random.Random] = None) -> int:
     """Write a message for every due step on channels in Assisted or Auto mode. Returns how many."""
     now = _now(now)
+    if send_provider() == "ghl":
+        return 0                                           # the first emails are written when an import is checked
     s = sch.load_settings()
     created = 0
 
@@ -223,6 +229,8 @@ def approve_draft(db: Session, msg: OutreachMessage, mode: str, now: datetime,
     msg.status, msg.mode, msg.approved_at, msg.error = "approved", mode, now, None
     if msg.kind == FOLLOWUP:
         return                                       # sent by Instantly with its first email: no release time of its own
+    if send_provider() == "ghl":
+        return                                       # approved emails wait to be released to GoHighLevel
     _assign_release(db, msg, now, rng)
     for later in _followups(db, msg):                # approving the first email approves the whole sequence
         later.status, later.mode, later.approved_at, later.error = "approved", mode, now, None
@@ -322,6 +330,11 @@ def list_messages(db: Session, status: str = "draft", channel: Optional[str] = N
         "label": m.inbound.label if m.kind == "reply" and m.inbound else None,
         "id": m.id, "lead_id": lead.id, "lead_name": lead.name, "city": lead.city,
         "tier": lead.tier.value if lead.tier else None,
+        "industry": lead.niche, "website": lead.website,
+        "weakness": (lead.attributes or {}).get("weakness"),
+        "weakness_edited": bool((lead.attributes or {}).get("weakness_edited")),
+        "weakness_note": (lead.attributes or {}).get("weakness_note"),
+        "email_check": ((lead.attributes or {}).get("email_check") or {}).get("status"),
         "step_key": m.step_key, "step_label": step_label(lead, m.step_key), "channel": m.channel,
         "to": lead.email if m.channel == "email" else lead.phone,
         "subject": m.subject, "body": m.body, "status": m.status, "mode": m.mode,
@@ -480,6 +493,8 @@ def hand_off_due_emails(db: Session, now: Optional[datetime] = None) -> dict:
 def send_due_emails(db: Session, now: Optional[datetime] = None) -> dict:
     """Send every approved email that is due. Returns {"sent": n, "failed": n}."""
     now = _now(now)
+    if send_provider() == "ghl":
+        return {"sent": 0, "failed": 0}                  # GoHighLevel sends; nothing leaves from here
     if send_provider() == "instantly":
         return hand_off_due_emails(db, now)
     result = {"sent": 0, "failed": 0}

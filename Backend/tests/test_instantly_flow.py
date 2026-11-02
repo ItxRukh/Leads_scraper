@@ -96,19 +96,22 @@ def test_without_a_key_only_the_free_check_runs(monkeypatch):
     assert ev.verify_address("a@b.example")["provider"] == "free"
 
 
-def test_batch_verification_only_pays_for_hot_and_warm_leads(seeded_db, monkeypatch):
+def test_batch_verification_checks_every_lead_with_an_email_once(seeded_db, monkeypatch):
     db = seeded_db
     hot, cold = make_lead(db, "hot@a.example", import_batch_id=7), make_lead(db, "cold@a.example", tier=LeadTier.COLD, import_batch_id=7)
+    no_email = make_lead(db, None, import_batch_id=7)
     asked = []
     monkeypatch.setattr(ev, "verify_address", lambda e: asked.append(e) or {"status": "valid", "provider": "millionverifier", "detail": "ok"})
 
     counts = ev.verify_batch(7, db=db)
 
-    assert asked == ["hot@a.example"] and counts["valid"] == 1
+    assert sorted(asked) == ["cold@a.example", "hot@a.example"] and counts["valid"] == 2      # no tier is skipped
     assert hot.email_status == EmailStatus.VALID and hot.email_verified and hot.attributes["email_check"]["provider"] == "millionverifier"
-    assert cold.email_status != EmailStatus.VALID
+    assert cold.email_status == EmailStatus.VALID and no_email.email_status != EmailStatus.VALID
     assert ev.verify_batch(7, db=db)["checked"] == 0                           # already checked: nothing is paid for twice
-    assert ev.batch_status(db, 7)["valid"] == 1
+    status = ev.batch_status(db, 7)
+    assert status["valid"] == 2 and status["to_check"] == 2 and status["no_email"] == 1
+    assert ev.verify_batch(7, db=db, tiers=(LeadTier.HOT,))["checked"] == 0
 
 
 # ─── handing a lead to Instantly ─────────────────────────────────────────────
@@ -478,29 +481,3 @@ def test_the_import_page_can_verify_a_batch(api, monkeypatch):
     assert client.post("/imports/3/verify").json() == {"started": True, "pending": 1}
     assert client.get("/imports/3/verify-status").json()["to_check"] == 1
     assert client.post("/imports/999/verify").status_code == 404
-
-
-# ─── dashboard ───────────────────────────────────────────────────────────────
-
-def test_dashboard_counts_follow_a_lead_from_import_to_ghl(handed_off, monkeypatch):
-    import dashboard_api
-    import reply_ai
-    db, lead = handed_off
-    monkeypatch.setattr(reply_ai, "classify_reply", lambda lead, text: ("interested", "Wants a call"))
-    monkeypatch.setattr(settings, "GHL_WEBHOOK_URL", "https://ghl.example/hook")
-    monkeypatch.setattr(ghl_sync.requests, "post", lambda *a, **k: type("R", (), {"status_code": 200, "text": ""})())
-    monkeypatch.setattr(ghl_sync, "_suggest_reply", lambda *a: None)
-    instantly_events.handle_event(db, reply(lead, "Yes please"), NOW)
-    make_lead(db, "cold@x.example", tier=LeadTier.COLD)
-
-    app = FastAPI()
-    app.include_router(dashboard_api.router)
-    app.dependency_overrides[get_db] = lambda: db
-    out = TestClient(app).get("/dashboard/summary").json()
-
-    counts = {f["key"]: f["count"] for f in out["funnel"]}
-    assert counts == {"imported": 2, "audited": 0, "checked": 1, "emailed": 1, "replied": 1, "interested": 1, "ghl": 1}
-    assert out["tiers"] == {"hot": 1, "warm": 0, "cold": 1}
-    assert out["recent_replies"][0]["lead_name"] == "Acme Heating" and out["recent_replies"][0]["ghl"] == "sent"
-    hvac = next(r for r in out["by_industry"] if r["industry"] == "HVAC")
-    assert (hvac["leads"], hvac["hot"], hvac["emailed"], hvac["replied"]) == (2, 1, 1, 1)

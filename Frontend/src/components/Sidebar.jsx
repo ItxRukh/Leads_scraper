@@ -6,30 +6,22 @@ const NAV = [
   {
     section: "General",
     items: [
-      { to: "/admin/analytics", icon: "ti-layout-dashboard", label: "Dashboard" },
+      { to: "/admin/dashboard", icon: "ti-layout-dashboard", label: "Dashboard" },
     ],
   },
   {
-    section: "Outreach",
+    section: "Leads",
     items: [
       { to: "/admin/import",   icon: "ti-upload",         label: "Import leads" },
       { to: "/admin/leads",    icon: "ti-users",          label: "Leads",         badge: null, badgeType: "count" },
-      { to: "/admin/queue",    icon: "ti-list-check",     label: "Outreach queue" },
-      { to: "/admin/email",    icon: "ti-mail",           label: "Email outreach" },
+      { to: "/admin/approve",  icon: "ti-mail-check",     label: "Approve emails" },
     ],
   },
   {
-    section: "CRM",
-    items: [
-      { to: "/admin/pipeline", icon: "ti-layout-kanban",  label: "Pipeline", badge: "hot", badgeType: "hot" },
-    ],
-  },
-  {
-    section: "Settings",
+    section: "Setup",
     items: [
       { to: "/admin/profiles", icon: "ti-briefcase", label: "Industry profiles" },
       { to: "/admin/dnc",      icon: "ti-ban",      label: "DNC / Blacklist" },
-      { to: "/admin/integrations", icon: "ti-plug-connected", label: "Integrations" },
       { to: "/admin/settings", icon: "ti-settings", label: "Settings" },
     ],
   },

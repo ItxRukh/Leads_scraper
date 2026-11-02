@@ -97,10 +97,9 @@ def verify_lead(db: Session, lead: Lead) -> dict:
     return result
 
 
-def verify_batch(batch_id: int, db: Optional[Session] = None, tiers: tuple = (LeadTier.HOT, LeadTier.WARM)) -> dict:
+def verify_batch(batch_id: int, db: Optional[Session] = None, tiers: Optional[tuple] = None) -> dict:
     """
-    Verify every not-yet-checked address in an import, for leads in the given tiers (Hot and Warm by default;
-    cold leads are never contacted, so checking them would only cost money). Runs in the background.
+    Verify every not-yet-checked address in an import (every lead, or only the given tiers). Runs in the background.
     """
     from database import SyncSessionLocal
 
@@ -109,7 +108,9 @@ def verify_batch(batch_id: int, db: Optional[Session] = None, tiers: tuple = (Le
     counts = {"checked": 0, "valid": 0, "invalid": 0, "catch-all": 0, "unknown": 0}
     try:
         leads = db.query(Lead).filter(Lead.import_batch_id == batch_id, Lead.email.isnot(None), Lead.email != "",
-                                      Lead.tier.in_(tiers), Lead.do_not_contact == False)  # noqa: E712
+                                      Lead.do_not_contact == False)  # noqa: E712
+        if tiers is not None:
+            leads = leads.filter(Lead.tier.in_(tiers))
         for lead in leads.all():
             if (lead.attributes or {}).get("email_check"):
                 continue                              # already checked
@@ -126,9 +127,10 @@ def verify_batch(batch_id: int, db: Optional[Session] = None, tiers: tuple = (Le
     return counts
 
 
-def batch_status(db: Session, batch_id: int, tiers: tuple = (LeadTier.HOT, LeadTier.WARM)) -> dict:
-    """Progress and results for the leads of an import that are worth contacting."""
-    leads = db.query(Lead).filter(Lead.import_batch_id == batch_id, Lead.tier.in_(tiers)).all()
+def batch_status(db: Session, batch_id: int, tiers: Optional[tuple] = None) -> dict:
+    """Progress and results of the email check for the leads of an import."""
+    q = db.query(Lead).filter(Lead.import_batch_id == batch_id)
+    leads = (q.filter(Lead.tier.in_(tiers)) if tiers is not None else q).all()
     with_email = [lead for lead in leads if lead.email]
     checks = [(lead.attributes or {}).get("email_check") for lead in with_email]
     done = [c for c in checks if c]

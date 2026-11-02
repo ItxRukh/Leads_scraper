@@ -17,6 +17,7 @@ from config import settings
 from database import Lead
 from profile_schema import ProfileConfig, SequenceStep
 from utils.groq_helper import _call_groq
+from weakness_check import split_points
 
 OPT_OUT_LINE_EMAIL = "If this isn't relevant, just reply STOP and I won't contact you again."
 OPT_OUT_LINE_WHATSAPP = "Reply STOP to opt out."
@@ -47,7 +48,12 @@ def step_intent(steps: list[SequenceStep], step: SequenceStep) -> str:
 
 
 def _observations(lead: Lead) -> list[str]:
-    """What we noticed about the lead: its biggest gaps, else the other scoring rules it matched."""
+    """What we noticed about the lead: its (checked) weakness, else its biggest gaps, else the rules it matched."""
+    attrs = lead.attributes or {}
+    fixes = {g["label"]: g.get("fix") for g in attrs.get("top_gaps", []) if g.get("label")}
+    points = split_points(attrs.get("weakness") or "")
+    if points:
+        return [p + (f" (our matching service: {fixes[p]})" if fixes.get(p) else "") for p in points[:3]]
     gaps = [g["label"] + (f" (our matching service: {g['fix']})" if g.get("fix") else "")
             for g in (lead.attributes or {}).get("top_gaps", []) if g.get("label")]
     if gaps:

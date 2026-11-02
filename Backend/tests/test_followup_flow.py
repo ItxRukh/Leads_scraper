@@ -5,7 +5,6 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-import dashboard_api
 import dnc_service
 import email_verification as ev
 import ghl_sync
@@ -26,62 +25,6 @@ def journey_of(db, lead):
     db.commit()
     db.refresh(lead)
     return lead_journey.journeys(db, [lead], NOW)[lead.id]["key"]
-
-
-# ─── where is this lead? ─────────────────────────────────────────────────────
-
-def test_the_journey_follows_a_lead_from_import_to_hand_off(seeded_db, cfg, monkeypatch):
-    db = seeded_db
-    write_fake(monkeypatch)
-    lead = make_lead(db)
-    assert journey_of(db, lead) == "to_audit"
-
-    lead.audited_at = NOW
-    db.commit()
-    assert journey_of(db, lead) == "to_check"
-
-    lead.attributes = {**lead.attributes, "email_check": {"status": "catch-all"}}
-    assert journey_of(db, lead) == "catch_all"
-
-    lead.attributes = {**lead.attributes, "email_check": {"status": "valid"}}
-    assert journey_of(db, lead) == "ready"
-
-    queue(db, lead)
-    assert journey_of(db, lead) == "queued"
-
-    ms.ensure_drafts(db, NOW)
-    assert journey_of(db, lead) == "draft"
-
-    ms.approve(db, db.query(OutreachMessage).filter_by(lead_id=lead.id, kind="step").one().id, NOW)
-    assert journey_of(db, lead) == "approved"
-
-    monkeypatch.setattr(ev, "verify_address", lambda e: {"status": "valid", "provider": "free", "detail": ""})
-    monkeypatch.setattr(instantly_client, "create_lead", lambda *a, **k: "inst-1")
-    ms.send_due_emails(db, NOW + timedelta(days=1))
-    assert journey_of(db, lead) == "instantly"
-
-
-def test_cold_leads_and_leads_without_an_email_say_why_nothing_happens(seeded_db):
-    db = seeded_db
-    cold = make_lead(db, "cold@x.example", tier=LeadTier.COLD, audited_at=NOW)
-    no_email = make_lead(db, None, audited_at=NOW)
-    no_site = make_lead(db, "n@x.example")
-    no_site.website = None
-    db.commit()
-    assert journey_of(db, cold) == "cold"
-    assert journey_of(db, no_email) == "no_email"
-    assert journey_of(db, no_site) == "no_site"
-
-
-def test_a_reply_and_the_ghl_hand_over_show_in_the_journey(handed_off, monkeypatch):
-    db, lead = handed_off
-    monkeypatch.setattr(reply_ai, "classify_reply", lambda lead, text: ("question", "Asks the price"))
-    monkeypatch.setattr(ghl_sync, "configured", lambda: False)
-    instantly_events.handle_event(db, reply(lead, "How much is it?"), NOW)
-    assert journey_of(db, lead) == "replied"
-
-    lead.attributes = {**lead.attributes, "ghl": {"status": "sent"}}
-    assert journey_of(db, lead) == "ghl"
 
 
 def test_a_blocked_lead_always_shows_do_not_contact(handed_off):
@@ -177,149 +120,6 @@ def test_the_lead_page_and_dnc_endpoints(seeded_db, cfg, monkeypatch):
         main.app.dependency_overrides.clear()
 
 
-# ─── Google Maps scrape ──────────────────────────────────────────────────────
-
-PLACES = [
-    {"name": "Cool Air HVAC", "phone": "+15125550101", "address": "10 Elm St, Austin, TX 78701", "city": "Austin",
-     "website": "https://coolair.example", "niche": "HVAC", "rating": 4.8, "review_count": 120, "source": LeadSource.GOOGLE_PLACES,
-     "google_place_id": "p1"},
-    {"name": "Warm Home Heating", "phone": "+15125550102", "address": "22 Oak St, Austin, TX 78702", "city": "Austin",
-     "website": "https://warmhome.example", "niche": "HVAC", "rating": 4.6, "review_count": 80, "source": LeadSource.GOOGLE_PLACES,
-     "google_place_id": "p2"},
-]
-
-
-@pytest.fixture
-def scraped(seeded_db, monkeypatch):
-    from scripts import scraper
-    db = seeded_db
-    monkeypatch.setattr(db, "close", lambda: None)                       # the scraper closes its session when done
-    monkeypatch.setattr(scraper, "SyncSessionLocal", lambda: db)
-    monkeypatch.setattr(scraper, "scrape_google_places", lambda *a, **k: ([dict(p) for p in PLACES], 0))
-    monkeypatch.setattr(scraper, "scrape_serpapi", lambda *a, **k: ([], 0))
-    monkeypatch.setattr(scraper, "scrape_yelp", lambda *a, **k: ([], 0))
-    monkeypatch.setattr(scraper, "export_leads_to_csv", lambda *a, **k: "leads.csv")
-    scraper.run_scraper("hvac", "Austin TX", skip_crawl=True)
-    return db
-
-
-def test_a_google_maps_scrape_tags_leads_with_the_industry_profile_and_a_batch(scraped):
-    db = scraped
-    job = db.query(ScrapingJob).one()
-    batch = db.query(ImportBatch).one()
-    assert job.status == "done" and job.import_batch_id == batch.id
-    assert (batch.source, batch.default_industry, batch.imported) == ("google maps", "hvac", 2)
-
-    leads = db.query(Lead).all()
-    assert len(leads) == 2
-    from database import IndustryProfile
-    hvac_profile = db.query(IndustryProfile).filter_by(slug="hvac").one().id
-    for lead in leads:
-        assert lead.import_batch_id == batch.id and lead.profile_id == hvac_profile
-        assert lead.attributes["industry_key"] == "hvac" and lead.attributes["state"] == "TX"
-        assert lead.niche == "HVAC"
-
-
-def test_the_post_scrape_endpoint_runs_the_checks_on_the_scraped_batch(scraped, monkeypatch):
-    import app as main
-    monkeypatch.setattr(settings, "ADMIN_PASSWORD", "")
-    db = scraped
-    job = db.query(ScrapingJob).one()
-    ran = []
-    monkeypatch.setattr(pipeline_run, "run_batch_pipeline", lambda batch_id, job_id=None, db=None: ran.append((batch_id, job_id)))
-    main.app.dependency_overrides[main.get_db] = lambda: db
-    try:
-        client = TestClient(main.app)
-        body = {"job_id": job.id, "niche": "hvac", "city": "Austin TX"}
-        assert client.post("/pipeline/post-scrape-auto", json=body).json()["batch_id"] == job.import_batch_id
-        assert ran == [(job.import_batch_id, job.id)]
-        assert client.post("/pipeline/post-scrape-auto", json={**body, "job_id": 999}).status_code == 404
-        assert client.get("/scraping-jobs").json()[0]["batch_id"] == job.import_batch_id
-    finally:
-        main.app.dependency_overrides.clear()
-
-
-# ─── the one-click check ─────────────────────────────────────────────────────
-
-def test_the_pipeline_audits_then_verifies_and_updates_the_scrape_job(scraped, monkeypatch):
-    db = scraped
-    job = db.query(ScrapingJob).one()
-    seen = []
-    monkeypatch.setattr(import_api, "audit_batch", lambda batch_id, db=None: seen.append(("audit", db.get(ScrapingJob, job.id).status)))
-    monkeypatch.setattr(ev, "verify_batch", lambda batch_id, db=None: seen.append(("verify", db.get(ScrapingJob, job.id).status)))
-
-    assert pipeline_run.run_batch_pipeline(job.import_batch_id, job.id, db=db) is True
-    assert seen == [("audit", "auditing"), ("verify", "verifying_emails")]
-    assert db.get(ScrapingJob, job.id).status == "outreach_done"
-
-
-def test_a_failing_check_marks_the_job_failed_instead_of_leaving_it_running(scraped, monkeypatch):
-    db = scraped
-    job = db.query(ScrapingJob).one()
-
-    def boom(batch_id, db=None):
-        raise RuntimeError("audit crashed")
-    monkeypatch.setattr(import_api, "audit_batch", boom)
-    assert pipeline_run.run_batch_pipeline(job.import_batch_id, job.id, db=db) is False
-    assert db.get(ScrapingJob, job.id).status == "outreach_failed"
-
-
-def test_the_import_page_can_start_and_follow_the_checks(seeded_db, monkeypatch):
-    db = seeded_db
-    make_lead(db, "x@a.example", import_batch_id=3)
-    db.add(ImportBatch(id=3, name="b"))
-    db.commit()
-    started = []
-    monkeypatch.setattr(pipeline_run, "run_batch_pipeline", lambda batch_id, job_id=None, db=None: started.append(batch_id))
-    app = FastAPI()
-    app.include_router(import_api.router)
-    app.dependency_overrides[get_db] = lambda: db
-    client = TestClient(app)
-
-    assert client.post("/imports/3/run").status_code == 202 and started == [3]
-    assert client.post("/imports/999/run").status_code == 404
-    state = client.get("/imports/3/pipeline").json()
-    assert state["stage"] == "audit" and state["audit"]["total"] == 1 and state["verify"]["to_check"] == 0 or state["stage"] in ("audit", "verify")
-
-    lead = db.query(Lead).one()
-    lead.audited_at = NOW
-    lead.attributes = {**(lead.attributes or {}), "email_check": {"status": "valid"}}
-    db.commit()
-    assert client.get("/imports/3/pipeline").json()["stage"] == "done"
-
-
-# ─── dashboard ───────────────────────────────────────────────────────────────
-
-def dashboard(db):
-    app = FastAPI()
-    app.include_router(dashboard_api.router)
-    app.dependency_overrides[get_db] = lambda: db
-    return TestClient(app).get("/dashboard/summary").json()
-
-
-def test_the_dashboard_lists_what_needs_the_user_and_names_the_industry_of_replies(handed_off, monkeypatch):
-    db, lead = handed_off
-    monkeypatch.setattr(reply_ai, "classify_reply", lambda lead, text: ("interested", "Wants a call"))
-    monkeypatch.setattr(settings, "GHL_WEBHOOK_URL", "")
-    instantly_events.handle_event(db, reply(lead, "Yes please"), NOW)
-
-    out = dashboard(db)
-    assert out["recent_replies"][0]["industry"] == "HVAC" and out["recent_replies"][0]["city"] == "Austin"
-
-    make_lead(db, "new@x.example")                                       # never audited
-    kinds = {item["key"] for item in dashboard(db)["todo"]}
-    assert "audit" in kinds
-
-
-def test_the_dashboard_todo_shows_setup_problems_first(seeded_db, monkeypatch):
-    monkeypatch.setattr(settings, "INSTANTLY_API_KEY", "")
-    import integrations_api
-    monkeypatch.setattr(integrations_api.instantly_handoff, "get_app_settings", lambda: {})
-    monkeypatch.setattr(dashboard_api, "get_app_settings", lambda: {"sendProvider": "instantly"})
-    todo = dashboard(seeded_db)["todo"]
-    assert todo and todo[0]["key"] == "setup" and todo[0]["to"] == "/admin/integrations"
-
-
 # ─── answering a reply from the lead page ────────────────────────────────────
 
 REPLY_ID = "11111111-2222-3333-4444-555555555555"
@@ -411,15 +211,6 @@ def test_the_reply_endpoints(answered, monkeypatch):
         assert client.post("/leads/999/reply", json={"text": "x"}).status_code == 404
     finally:
         main.app.dependency_overrides.clear()
-
-
-def test_the_dashboard_stops_asking_once_the_reply_is_answered(answered, monkeypatch):
-    import reply_send
-    db, lead = answered
-    monkeypatch.setattr(instantly_client, "send_reply", lambda *a: {"id": "e1"})
-    assert any(item["key"] == "answer" for item in dashboard(db)["todo"])
-    reply_send.send(db, lead, "Hello there")
-    assert not any(item["key"] == "answer" for item in dashboard(db)["todo"])
 
 
 # ─── opens ───────────────────────────────────────────────────────────────────

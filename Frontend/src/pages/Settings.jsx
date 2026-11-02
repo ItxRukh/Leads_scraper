@@ -418,9 +418,6 @@ export default function Settings() {
 
   const TABS = [
     { id: "general",   icon: "ti-settings",      label: "General"      },
-    { id: "scraper",   icon: "ti-world-search",   label: "Scraper"      },
-    { id: "templates", icon: "ti-template",       label: "Templates"    },
-    { id: "scoring",   icon: "ti-star",           label: "Lead Scoring" },
     { id: "export",    icon: "ti-download",       label: "Export"       },
     { id: "danger",    icon: "ti-alert-triangle", label: "Danger Zone"  },
   ];

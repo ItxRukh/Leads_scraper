@@ -32,7 +32,7 @@ MAX_BYTES = 5 * 1024 * 1024
 
 # fields a row can have once cleaned
 FIELDS = ["business_name", "contact_name", "contact_title", "email", "phone", "website",
-          "industry", "city", "state", "address"]
+          "industry", "city", "state", "address", "weakness"]
 
 # header text (lower case, letters and digits only, words joined by "_") -> field
 _ALIASES: dict[str, list[str]] = {
@@ -48,6 +48,9 @@ _ALIASES: dict[str, list[str]] = {
     "city":          ["city", "town", "location"],
     "state":         ["state", "st", "province", "region", "state_province"],
     "address":       ["address", "street", "street_address"],
+    "weakness":      ["weakness", "weaknesses", "weak_points", "issues", "issue", "problem", "problems", "gaps",
+                      "pain_points", "pain_point", "whats_missing", "missing", "opportunity", "opportunities",
+                      "website_issues", "site_issues", "findings"],
 }
 _FIRST = {"first_name", "firstname", "first", "given_name"}
 _LAST = {"last_name", "lastname", "last", "surname", "family_name"}
@@ -323,6 +326,7 @@ def clean_row(row: dict, default_industry: Optional[str] = None) -> dict:
         "city": city or None,
         "state": state,
         "address": _text(row.get("address", ""), 300) or None,
+        "weakness": _text(row.get("weakness", ""), 500) or None,
     }
     return {"row": row.get("_row"), "data": data, "warnings": warnings, "errors": errors,
             "extra": row.get("extra") or {}, "notes": _text(row.get("notes", ""), 500) or None, "ai_fixed": []}
@@ -633,6 +637,7 @@ def save_leads(db: Session, results: Iterable[dict], *, batch_name: str, source:
             linkedin_name=d["contact_name"], linkedin_title=d["contact_title"],     # used as the greeting name; linkedin_found stays False
             import_batch_id=batch.id,
             attributes={"state": state, "industry_key": d["industry"], "email_is_role": d["email_is_role"],
+                        "weakness": d["weakness"], "weakness_original": d["weakness"],
                         "import_row": r["row"], "ai_fixed": r["ai_fixed"], "notes": r["notes"], "extra": r["extra"]},
         ))
         imported += 1
@@ -645,10 +650,10 @@ def save_leads(db: Session, results: Iterable[dict], *, batch_name: str, source:
 def sample_csv() -> str:
     """The template people download: the columns we use, and a few made-up rows to show the format."""
     lines = [
-        "business_name,contact_name,contact_title,email,phone,website,industry,city,state",
-        "Sample Comfort Heating & Air,Dana Rivera,Owner,dana@samplecomfort.example,(512) 555-0142,samplecomfort.example,HVAC,Austin,TX",
-        "Example Family Dental,Dr. Chris Lee,Practice Manager,office@examplefamilydental.example,512-555-0177,www.examplefamilydental.example,Dental,Round Rock,Texas",
-        "Demo Plumbing Co,,,,(303) 555-0101,demoplumbing.example,plumbing,Denver,CO",
-        "Placeholder Law Group,Sam Patel,Partner,sam@placeholderlaw.example,,placeholderlaw.example,Law Firms,Miami,FL",
+        "business_name,contact_name,contact_title,email,phone,website,industry,city,state,weakness",
+        'Sample Comfort Heating & Air,Dana Rivera,Owner,dana@samplecomfort.example,(512) 555-0142,samplecomfort.example,HVAC,Austin,TX,"no online booking, no after-hours info"',
+        'Example Family Dental,Dr. Chris Lee,Practice Manager,office@examplefamilydental.example,512-555-0177,www.examplefamilydental.example,Dental,Round Rock,Texas,no patient forms online',
+        "Demo Plumbing Co,,,,(303) 555-0101,demoplumbing.example,plumbing,Denver,CO,",
+        "Placeholder Law Group,Sam Patel,Partner,sam@placeholderlaw.example,,placeholderlaw.example,Law Firms,Miami,FL,no contact form",
     ]
     return "\n".join(lines) + "\n"

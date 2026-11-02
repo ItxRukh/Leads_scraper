@@ -6,15 +6,12 @@ import { fetchAuthStatus, getToken, LOGOUT_EVENT } from "./auth";
 
 import Login           from "./pages/Login";
 import Import          from "./pages/Import";
-import Integrations    from "./pages/Integrations";
-import Leads           from "./pages/Leads";
-import EmailOutreach   from "./pages/EmailOutreach";
-import Pipeline        from "./pages/Pipeline";
 import Dashboard       from "./pages/Dashboard";
+import Leads           from "./pages/Leads";
+import ApproveEmails   from "./pages/ApproveEmails";
 import DNC             from "./pages/DNC";
 import Settings        from "./pages/Settings";
 import Profiles        from "./pages/Profiles";
-import OutreachQueue   from "./pages/OutreachQueue";
 
 // Every admin page sits inside the same layout (sidebar + navbar + footer).
 const page = (Component) => (
@@ -25,19 +22,16 @@ function AdminRoutes() {
   return (
     <ConnectionsProvider>
     <Routes>
-      <Route path="/admin/analytics" element={page(Dashboard)} />
+      <Route path="/admin/dashboard" element={page(Dashboard)} />
       <Route path="/admin/import"    element={page(Import)} />
       <Route path="/admin/leads"     element={page(Leads)} />
-      <Route path="/admin/queue"     element={page(OutreachQueue)} />
-      <Route path="/admin/email"     element={page(EmailOutreach)} />
-      <Route path="/admin/pipeline"  element={page(Pipeline)} />
+      <Route path="/admin/approve"   element={page(ApproveEmails)} />
       <Route path="/admin/dnc"       element={page(DNC)} />
       <Route path="/admin/profiles"  element={page(Profiles)} />
-      <Route path="/admin/integrations" element={page(Integrations)} />
       <Route path="/admin/settings"  element={page(Settings)} />
 
-      {/* Anything else (including "/" and old /login links) opens the dashboard */}
-      <Route path="*" element={<Navigate to="/admin/analytics" replace />} />
+      {/* Anything else (including "/" and old links) opens the Dashboard */}
+      <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
     </Routes>
     </ConnectionsProvider>
   );

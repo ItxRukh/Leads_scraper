@@ -32,7 +32,7 @@ from loguru import logger
 from config import settings
 from database import (
     Lead, LeadTier, PipelineStage, EmailLog, CallLog, CallOutcome,
-    WhatsAppLog, DNCList, ScrapingJob,
+    WhatsAppLog, DNCList,
     SyncSessionLocal, LeadCRUD, DNCCrud, init_db
 )
 
@@ -110,7 +110,6 @@ _setup_file_logging()
 _setup_sentry()
 
 # ── Import all phase scripts ──────────────────────────────────────────────────
-from scripts.scraper import run_scraper
 from scripts.linkedin import run_linkedin_enrichment
 from scripts.auditor import run_auditor
 from scripts.email_verify import run_email_verifier
@@ -273,6 +272,7 @@ def get_leads(
     year:      Optional[int]  = Query(None, ge=2000, le=2100, description="Filter by scraped_at year. Combine with month for a single month."),
     month:     Optional[int]  = Query(None, ge=1, le=12, description="Filter by scraped_at month (1-12). Requires year."),
     stuck:     bool           = Query(False, description="Stuck Leads filter — only leads with no possible outreach path (no email AND no phone, or Do-Not-Contact)"),
+    batch:     Optional[int]  = Query(None, description="Only the leads of this import"),
     skip:      int            = Query(0,    description="Pagination offset"),
     limit:     int            = Query(100,  description="Max results to return"),
     db: Session = Depends(get_db),
@@ -297,6 +297,7 @@ def get_leads(
         year=year,
         month=month,
         stuck_only=stuck,
+        batch_id=batch,
         skip=skip,
         limit=limit,
     )
@@ -312,6 +313,17 @@ def get_leads(
         "offset": skip,
         "leads": [_serialize_lead(lead, status_by_lead.get(lead.id), journey_by_lead.get(lead.id)) for lead in leads],
     }
+
+
+@app.get("/leads/status-summary", tags=["Leads"])
+def leads_status_summary(db: Session = Depends(get_db)):
+    """How many leads are at each step ("Where it is"), for the cards on the Leads page."""
+    import lead_journey
+    leads = db.query(Lead).all()
+    counts: dict = {}
+    for journey in lead_journey.journeys(db, leads).values():
+        counts[journey["key"]] = counts.get(journey["key"], 0) + 1
+    return {"total": len(leads), "by_step": counts}
 
 
 @app.get("/leads/{lead_id}", tags=["Leads"])
@@ -375,17 +387,6 @@ def export_leads(
 
 # ── Pydantic models: define the shape of POST request bodies ──────────────────
 
-class ScrapeRequest(BaseModel):
-    niche:       str
-    city:        str
-    min_rating:  float = 3.5
-    min_reviews: int   = 10
-    skip_crawl:  bool  = False
-    max_leads:   int   = 50    # cap on unique leads saved per scrape (Settings → Scraper → Max Leads Per Scrape)
-    profile_id:  Optional[int] = None  # Industry Profile to use; None = the default profile
-    auto_audit:  bool  = False # if true, automatically runs the audit phase right after scraping (Settings → Scraper → Auto-audit)
-
-
 class EmailOutreachRequest(BaseModel):
     min_score: int  = 40
     dry_run:   bool = False
@@ -399,21 +400,6 @@ class EmailOutreachRequest(BaseModel):
     # existing Groq-generated behavior.
     subject:   Optional[str] = None
     body:      Optional[str] = None
-
-
-class PostScrapePipelineRequest(BaseModel):
-    """
-    Request body for the chained Audit → Verify → Send flow, triggered from
-    the post-scrape dialog. Reuses the same ScrapingJob row (job_id) that
-    the /pipeline/scrape call already created, so the frontend keeps polling
-    the exact same id and sees status move through:
-    running → done → auditing → verifying_emails → sending_emails → outreach_done
-    """
-    job_id:    int
-    niche:     str
-    city:      str
-    min_score: int  = 0     # 0 = everyone in this batch with a verified email
-    dry_run:   bool = False
 
 
 class VapiCallRequest(BaseModel):
@@ -435,74 +421,6 @@ class WhatsAppRequest(BaseModel):
     # If set, this exact template (with {{name}}/{{business}}/{{city}}/
     # {{niche}} filled in) is sent instead of a Groq-generated SMS.
     message: Optional[str] = None
-
-
-@app.post("/pipeline/scrape", tags=["Pipeline"])
-def trigger_scrape(req: ScrapeRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
-    """
-    Phase 1 — Triggers lead scraping in the background.
-    Scrapes Google Places, SerpAPI, and Yelp for the given niche + city.
-
-    BackgroundTasks: FastAPI runs this in the background so the frontend
-    gets an immediate response instead of waiting minutes for scraping to finish.
-
-    The ScrapingJob row is created HERE (synchronously, before the background
-    task starts) so we can hand the frontend a job_id right away — it polls
-    GET /scraping-jobs and watches this id for status="done" to know exactly
-    when scraping finished (used by the post-scrape "send emails?" dialog).
-    """
-    if req.profile_id is not None:
-        from database import IndustryProfile
-        if db.get(IndustryProfile, req.profile_id) is None:
-            raise HTTPException(status_code=404, detail=f"Profile {req.profile_id} not found")
-    # (no profile given: the scraper picks the industry's own profile from the niche, e.g. "plumbers" -> Plumbing)
-
-    job = ScrapingJob(
-        niche=req.niche, city=req.city,
-        min_rating=req.min_rating, min_reviews=req.min_reviews,
-        status="running",
-    )
-    db.add(job)
-    db.commit()
-    db.refresh(job)
-
-    background_tasks.add_task(
-        run_scraper,
-        niche=req.niche,
-        city=req.city,
-        min_rating=req.min_rating,
-        min_reviews=req.min_reviews,
-        skip_crawl=req.skip_crawl,
-        max_leads=req.max_leads,
-        job_id=job.id,
-        profile_id=req.profile_id,
-    )
-    if req.auto_audit:
-        # Runs right after the scrape task finishes (background tasks execute
-        # in the order they were added) — mirrors Settings → "Auto-audit new leads"
-        background_tasks.add_task(run_auditor, lead_id=None)
-    return {
-        "status": "started",
-        "job_id": job.id,
-        "message": f"Scraping '{req.niche}' businesses in '{req.city}' — running in background"
-                    + (" (auto-audit enabled)" if req.auto_audit else ""),
-    }
-
-
-@app.post("/pipeline/post-scrape-auto", tags=["Pipeline"])
-def trigger_post_scrape_pipeline(req: PostScrapePipelineRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
-    """
-    After a Google Maps scrape: check every new lead's website and score it, then check the emails of the Hot and
-    Warm ones. Nothing is sent: drafts are written and wait for approval on the Outreach queue page.
-    The job's status moves auditing -> verifying_emails -> outreach_done, which the Leads page shows as progress.
-    """
-    import pipeline_run
-
-    job = db.get(ScrapingJob, req.job_id)
-    if job is None or job.import_batch_id is None:
-        raise HTTPException(status_code=404, detail="That scrape has no leads to process")
-    background_tasks.add_task(pipeline_run.run_batch_pipeline, job.import_batch_id, job.id)
-    return {"status": "started", "job_id": job.id, "batch_id": job.import_batch_id}
 
 
 @app.post("/pipeline/linkedin", tags=["Pipeline"])
@@ -1242,56 +1160,6 @@ class CalculatorRequest(BaseModel):
     months:              int   = 12      # Projection period
 
 
-@app.get("/scraping-jobs", tags=["Leads"])
-def get_scraping_jobs(db: Session = Depends(get_db)):
-    """
-    Returns the history of all scraping runs.
-    Shows niche, city, how many leads were found, and status.
-    """
-    jobs = db.query(ScrapingJob).order_by(ScrapingJob.started_at.desc()).limit(50).all()
-    return [_serialize_scraping_job(j) for j in jobs]
-
-
-def _serialize_scraping_job(j: ScrapingJob) -> dict:
-    """
-    Includes the post-scrape summary breakdown: how many were found in
-    total, how many actually became new leads, and — for the rest —
-    exactly why they didn't (low rating/reviews, duplicate within this
-    batch, already existed from an earlier scrape, or cut off by the
-    Max Leads Per Scrape setting).
-    """
-    total_skipped = (
-        (j.skipped_low_rating or 0)
-        + (j.skipped_duplicate_batch or 0)
-        + (j.skipped_duplicate_existing or 0)
-        + (j.skipped_over_cap or 0)
-    )
-    return {
-        "id":            j.id,
-        "batch_id":      j.import_batch_id,
-        "niche":         j.niche,
-        "city":          j.city,
-        "status":        j.status,
-        "total_google":  j.total_google,
-        "total_serpapi": j.total_serpapi,
-        "total_yelp":    j.total_yelp,
-        "total_scraped": j.total_scraped,
-        "started_at":    j.started_at.isoformat() if j.started_at else None,
-        "completed_at":  j.completed_at.isoformat() if j.completed_at else None,
-        "summary": {
-            "total_found":   j.total_raw_matches or 0,
-            "total_created": j.total_scraped or 0,
-            "total_skipped": total_skipped,
-            "skip_reasons": {
-                "low_rating_or_reviews": j.skipped_low_rating or 0,
-                "duplicate_in_batch":    j.skipped_duplicate_batch or 0,
-                "already_in_database":   j.skipped_duplicate_existing or 0,
-                "over_max_leads_cap":    j.skipped_over_cap or 0,
-            },
-        },
-    }
-
-
 # ═══════════════════════════════════════════════════════════════════════════════
 # SERIALIZER HELPERS — Convert SQLAlchemy models to plain dicts for JSON response
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1370,6 +1238,10 @@ def _serialize_lead(lead: Lead, outreach_status: Optional[dict] = None, journey:
         "ghl":                      (lead.attributes or {}).get("ghl"),
         "suggested_reply":          (lead.attributes or {}).get("suggested_reply"),
         "industry_key":             (lead.attributes or {}).get("industry_key"),
+        "weakness":                 (lead.attributes or {}).get("weakness"),
+        "weakness_original":        (lead.attributes or {}).get("weakness_original"),
+        "weakness_edited":          bool((lead.attributes or {}).get("weakness_edited")),
+        "weakness_note":            (lead.attributes or {}).get("weakness_note"),
         "journey":                  journey,
 
         # Timestamps

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import "./ConnectionStatus.css";
 import { useConnections } from "./connectionsContext";
 
@@ -111,6 +111,7 @@ export function ConnectionChips() {
 /** A bar at the top of every page, only when something needs attention. */
 export function ConnectionBanner() {
   const { data } = useConnections();
+  const onApprovePage = useLocation().pathname === "/admin/approve";
   if (!data) return null;
   const { whatsapp: w, email: e } = data;
   const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
@@ -128,12 +129,12 @@ export function ConnectionBanner() {
     );
   }
   const toApprove = (w?.to_approve ?? 0) + e.to_approve;
-  if (toApprove > 0) {
+  if (toApprove > 0 && !onApprovePage) {
     bars.push(
       <div className="cx-banner cx-banner--info" key="ap">
         <i className="ti ti-message-check" />
-        <span>{plural(toApprove, "message")} ready for your approval.</span>
-        <Link className="btn-ghost cx-link" to="/admin/queue">Review</Link>
+        <span>{plural(toApprove, "email")} ready for your approval.</span>
+        <Link className="btn-ghost cx-link" to="/admin/approve">Review</Link>
       </div>
     );
   }

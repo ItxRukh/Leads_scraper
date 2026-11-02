@@ -61,8 +61,10 @@ class Settings(BaseSettings):
     MILLIONVERIFIER_API_KEY: str = ""
     MILLIONVERIFIER_BASE_URL: str = "https://api.millionverifier.com/api/v3"
 
-    # ── GoHighLevel: Inbound Webhook URL of the workflow that receives interested leads ──
-    GHL_WEBHOOK_URL: str = ""
+    # ── GoHighLevel: the outbound sub-account (Settings > Private Integrations) ──
+    GHL_API_TOKEN: str = ""        # private integration token with contacts access
+    GHL_LOCATION_ID: str = ""      # the sub-account's location id
+    GHL_WEBHOOK_URL: str = ""      # older: inbound webhook of a workflow (not needed for the sync)
 
     # ── AI Provider (Groq) ──────────────────────────────────────────────────
     GROQ_API_KEY: str = ""

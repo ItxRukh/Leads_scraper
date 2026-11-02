@@ -54,7 +54,7 @@ def status():
     cfg = get_app_settings()
     name, address = instantly_handoff.company()
     return {
-        "provider": "instantly" if cfg.get("sendProvider") == "instantly" else "smtp",
+        "provider": cfg.get("sendProvider") if cfg.get("sendProvider") in ("ghl", "instantly") else "smtp",
         "instantly": {"configured": instantly_client.configured(), "campaign_id": instantly_handoff.campaign_id(),
                       "webhook_secret_set": bool(settings.INSTANTLY_WEBHOOK_SECRET)},
         "verification": {"paid_provider": email_verification.paid_provider(),
@@ -122,7 +122,7 @@ def register_webhooks(body: WebhookBody):
 
 
 class ProviderBody(BaseModel):
-    provider: str = Field(pattern="^(instantly|smtp)$")
+    provider: str = Field(pattern="^(ghl|instantly|smtp)$")
 
 
 @router.post("/provider")

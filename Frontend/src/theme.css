@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════
-   THEME TOKENS — agency site ka design (dark purple), plus a light mode.
-   Dark   : agency-site/src/app/globals.css ke exact tokens.
+   THEME TOKENS — the agency site's design (dark purple), plus a light mode.
+   Dark   : the exact tokens of agency-site/src/app/globals.css.
    Light  : same purple accent on soft violet-white surfaces.
    The theme is switched by <html data-theme="dark|light"> (see theme.js).
    Existing stylesheets keep their old variable names (--or, --blk*, --wht,

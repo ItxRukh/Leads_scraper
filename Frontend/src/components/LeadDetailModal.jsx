@@ -1,18 +1,9 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import "./LeadDetailModal.css";
 
 const API = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
 // ─── small local helpers (mirrors Leads.jsx so styling/labels stay consistent) ──
-function tierClass(tier) {
-  const map = { hot: "tier-hot", warm: "tier-warm", cold: "tier-cold" };
-  return map[tier] ?? "tier-unscored";
-}
-function tierLabel(tier) {
-  const map = { hot: "🔥 Hot", warm: "Warm", cold: "Cold" };
-  return map[tier] ?? "Unscored";
-}
 function emailBadge(status) {
   const map = {
     valid:       { cls: "email-valid",    label: "✓ Valid" },
@@ -23,30 +14,6 @@ function emailBadge(status) {
     unknown:     { cls: "email-unknown",  label: "? Unknown" },
   };
   return map[status] ?? { cls: "email-unknown", label: status ?? "—" };
-}
-function stageLabel(s) {
-  if (!s) return "—";
-  return s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-}
-// Visual meta (icon + color) for each possible outreach channel status —
-// mirrors the status strings returned by Backend/utils/outreach_reason.py
-function channelMeta(status) {
-  const map = {
-    blocked:          { color: "#f87171", icon: "ti-ban" },
-    replied:          { color: "#4ade80", icon: "ti-message-circle-2" },
-    sent:             { color: "#60a5fa", icon: "ti-clock" },
-    waiting:          { color: "#60a5fa", icon: "ti-clock" },
-    due:              { color: "#fbbf24", icon: "ti-alert-circle" },
-    ready:            { color: "#4ade80", icon: "ti-circle-check" },
-    no_email:         { color: "#fbbf24", icon: "ti-mail-off" },
-    no_phone:         { color: "#fbbf24", icon: "ti-phone-off" },
-    unverified:       { color: "#fbbf24", icon: "ti-alert-triangle" },
-    score_low:        { color: "#fbbf24", icon: "ti-trending-down" },
-    stuck_no_trigger: { color: "#fbbf24", icon: "ti-alert-triangle" },
-    not_needed:       { color: "var(--tx-30)", icon: "ti-minus" },
-    called:           { color: "#60a5fa", icon: "ti-phone-check" },
-  };
-  return map[status] ?? { color: "var(--tx-30)", icon: "ti-help-circle" };
 }
 function formatDate(d) {
   if (!d) return "—";
@@ -66,12 +33,9 @@ function formatDate(d) {
  *   onClose — called when the user closes the modal.
  */
 export default function LeadDetailModal({ leadId, onClose }) {
-  const navigate = useNavigate();
   const [lead,    setLead]    = useState(null);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState("");
-  const [ghlBusy, setGhlBusy] = useState(false);
-  const [ghlNote, setGhlNote] = useState("");
   const [replyText, setReplyText] = useState("");
   const [editing, setEditing] = useState(false);
   const [sendBusy, setSendBusy] = useState(false);
@@ -85,7 +49,6 @@ export default function LeadDetailModal({ leadId, onClose }) {
     setLoading(true);
     setError("");
     setLead(null);
-    setGhlNote("");
     setBlockNote("");
     setEditing(false);
     setSendNote({ ok: true, text: "" });
@@ -172,8 +135,7 @@ export default function LeadDetailModal({ leadId, onClose }) {
           {!loading && !error && lead && (
             <>
               <div className="ld-top-row">
-                <span className={`tier-badge ${tierClass(lead.tier)}`}>{tierLabel(lead.tier)}</span>
-                <span className="stage-badge">{stageLabel(lead.pipeline_stage)}</span>
+                <span className="stage-badge">{lead.niche ?? "Lead"}</span>
                 {lead.do_not_contact && <span className="ld-dnc-badge"><i className="ti ti-ban" /> Do not contact</span>}
               </div>
 
@@ -182,23 +144,6 @@ export default function LeadDetailModal({ leadId, onClose }) {
                   <div className="ld-section-label">Where this lead is</div>
                   <div className="ld-journey-label">{lead.journey.label}</div>
                   {lead.journey.next && <div className="ld-journey-next">{lead.journey.next}</div>}
-                </div>
-              )}
-
-              <div className="ld-score-row">
-                <div className="ld-score-num">{lead.final_score ?? 0}</div>
-                <div className="ld-score-sub">
-                  <div>Final score</div>
-                  <div className="ld-score-breakdown">
-                    base {lead.base_score ?? 0} + bonus {lead.bonus_score ?? 0}
-                  </div>
-                </div>
-              </div>
-
-              {lead.score_incomplete && (
-                <div className="ld-incomplete-banner">
-                  <i className="ti ti-alert-triangle" />
-                  <span>{lead.score_incomplete_reason || "Score incomplete — some signals couldn't be checked."}</span>
                 </div>
               )}
 
@@ -243,32 +188,16 @@ export default function LeadDetailModal({ leadId, onClose }) {
                 </div>
               </div>
 
-              {lead.outreach_status && (
-                <div className="ld-section">
-                  <div className="ld-section-label">Outreach status</div>
-                  <div className="ld-outreach-list">
-                    {[
-                      { key: "email", label: "Email", icon: "ti-mail" },
-                    ].map(({ key, label, icon }) => {
-                      const ch = lead.outreach_status[key];
-                      if (!ch) return null;
-                      const meta = channelMeta(ch.status);
-                      return (
-                        <div key={key} className="ld-outreach-row">
-                          <div className="ld-outreach-channel">
-                            <i className={`ti ${icon}`} />
-                            <span>{label}</span>
-                          </div>
-                          <div className="ld-outreach-reason">
-                            <i className={`ti ${meta.icon}`} style={{ color: meta.color }} />
-                            <span>{ch.reason}</span>
-                          </div>
-                        </div>
-                      );
-                    })}
+              <div className="ld-section">
+                <div className="ld-section-label">Weakness</div>
+                <div className="ld-audit-text">{lead.weakness || "None. The first email has a general opening."}</div>
+                {lead.weakness_edited && (
+                  <div className="ld-fix">
+                    The AI corrected this after looking at the website.{lead.weakness_note ? ` ${lead.weakness_note}` : ""}
+                    {lead.weakness_original ? ` Your list said: "${lead.weakness_original}".` : ""}
                   </div>
-                </div>
-              )}
+                )}
+              </div>
 
               {lead.linkedin_found && (
                 <div className="ld-section">
@@ -306,31 +235,13 @@ export default function LeadDetailModal({ leadId, onClose }) {
               )}
 
               <div className="ld-section">
-                <div className="ld-section-label">Email and GoHighLevel</div>
+                <div className="ld-section-label">Email address</div>
                 <div className="ld-field">
                   <span className="ld-field-label">Email check</span>
                   <span className="ld-field-val">
                     {lead.email_check ? `${lead.email_check.status} (${lead.email_check.provider}${lead.email_check.detail ? `: ${lead.email_check.detail}` : ""})` : "Not checked yet"}
                   </span>
                 </div>
-                <div className="ld-field">
-                  <span className="ld-field-label">GoHighLevel</span>
-                  <span className="ld-field-val">
-                    {lead.ghl ? `${lead.ghl.status}${lead.ghl.error ? `: ${lead.ghl.error}` : ""}` : "Not sent"}
-                  </span>
-                </div>
-                <button className="btn-ghost" disabled={ghlBusy || lead.do_not_contact} onClick={async () => {
-                  setGhlBusy(true); setGhlNote("");
-                  try {
-                    const res = await fetch(`${API}/integrations/ghl/send/${lead.id}`, { method: "POST" });
-                    const body = await res.json().catch(() => ({}));
-                    setGhlNote(res.ok ? (body.status === "sent" ? "Sent to GoHighLevel." : `Not sent: ${body.error}`) : (body.detail || "Could not send."));
-                    if (res.ok) setLead({ ...lead, ghl: { status: body.status, error: body.error } });
-                  } catch { setGhlNote("Network error."); } finally { setGhlBusy(false); }
-                }}>
-                  <i className="ti ti-send" /> Send to GoHighLevel now
-                </button>
-                {ghlNote && <div className="ld-fix">{ghlNote}</div>}
               </div>
 
               {lead.reply && (
@@ -376,22 +287,15 @@ export default function LeadDetailModal({ leadId, onClose }) {
                 </div>
               )}
 
-              {lead.audit_summary && (
-                <div className="ld-section">
-                  <div className="ld-section-label">Audit summary</div>
-                  <div className="ld-audit-text">{lead.audit_summary}</div>
-                </div>
-              )}
-
               <div className="ld-section">
                 <div className="ld-section-label">Timeline</div>
                 <div className="ld-grid">
                   <div className="ld-field">
-                    <span className="ld-field-label">Scraped</span>
+                    <span className="ld-field-label">Imported</span>
                     <span className="ld-field-val">{formatDate(lead.scraped_at)}</span>
                   </div>
                   <div className="ld-field">
-                    <span className="ld-field-label">Audited</span>
+                    <span className="ld-field-label">Website checked</span>
                     <span className="ld-field-val">{formatDate(lead.audited_at)}</span>
                   </div>
                 </div>
@@ -408,14 +312,6 @@ export default function LeadDetailModal({ leadId, onClose }) {
             </button>
           )}
           {blockNote && <span className="ld-fix">{blockNote}</span>}
-          {lead && (
-            <button
-              className="btn-primary"
-              onClick={() => navigate(`/admin/pipeline?highlight=${lead.id}`)}
-            >
-              <i className="ti ti-list-check" /> View in pipeline
-            </button>
-          )}
         </div>
       </div>
     </div>

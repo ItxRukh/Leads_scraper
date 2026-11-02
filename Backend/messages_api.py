@@ -6,6 +6,7 @@ messages_api.py — Review and approve the messages the system prepared
     POST /outreach-messages/{id}/approve     approve a draft (it is released at its planned time)
     POST /outreach-messages/{id}/discard     throw it away; a new draft is written if the step is still due
     POST /outreach-messages/{id}/skip        throw it away and skip the lead's step
+    POST /outreach-messages/{id}/rewrite     write a new first email for the lead and throw this draft away
     POST /outreach-messages/approve-all      approve every draft (?channel=)
 """
 
@@ -67,6 +68,15 @@ def approve(message_id: int, db: Session = Depends(get_db)):
 @router.post("/{message_id}/discard")
 def discard(message_id: int, db: Session = Depends(get_db)):
     return {"id": message_id, "status": _call(ms.discard, db, message_id).status}
+
+
+@router.post("/{message_id}/rewrite")
+def rewrite(message_id: int, db: Session = Depends(get_db)):
+    import first_email
+    msg = db.get(ms.OutreachMessage, message_id)
+    if msg is None:
+        raise HTTPException(status_code=404, detail="Message not found")
+    return {"id": _call(first_email.rewrite, db, msg).id}
 
 
 @router.post("/{message_id}/skip")

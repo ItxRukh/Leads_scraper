@@ -96,6 +96,7 @@ class CommitRow(BaseModel):
     city: Optional[str] = None
     state: Optional[str] = None
     address: Optional[str] = None
+    weakness: Optional[str] = None
     notes: Optional[str] = None
     extra: dict = Field(default_factory=dict)
     ai_fixed: list[str] = Field(default_factory=list)
@@ -201,11 +202,12 @@ def audit_status(batch_id: int, db: Session = Depends(get_db)):
 
 @router.post("/{batch_id}/run", status_code=202)
 def start_pipeline(batch_id: int, background: BackgroundTasks, db: Session = Depends(get_db)):
-    """One button: check every website and score the lead, then check the emails of the Hot and Warm ones."""
+    """One button: check the websites, correct the weakness, check the emails, write the first emails."""
     import pipeline_run
 
     if not db.get(ImportBatch, batch_id):
         raise HTTPException(404, "Import not found")
+    pipeline_run.mark_running(batch_id)              # before the task starts, so the first progress check is right
     background.add_task(pipeline_run.run_batch_pipeline, batch_id)
     return {"started": True}
 

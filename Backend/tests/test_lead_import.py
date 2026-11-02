@@ -289,7 +289,7 @@ def test_sample_and_industries_endpoints(api):
     client, _ = api
     sample = client.get("/imports/sample.csv")
     assert sample.headers["content-type"].startswith("text/csv")
-    assert sample.text.splitlines()[0] == "business_name,contact_name,contact_title,email,phone,website,industry,city,state"
+    assert sample.text.splitlines()[0] == "business_name,contact_name,contact_title,email,phone,website,industry,city,state,weakness"
     assert {"key": "hvac", "label": "HVAC"} in client.get("/imports/industries").json()
     # the sample must itself import cleanly
     pv = client.post("/imports/preview", files={"file": ("s.csv", sample.content, "text/csv")}, data={"use_ai": "false"}).json()

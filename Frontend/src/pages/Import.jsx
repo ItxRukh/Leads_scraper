@@ -8,10 +8,10 @@ const API = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 const FIELD_LABELS = {
   business_name: "Business name", contact_name: "Contact name", contact_title: "Contact title", email: "Email",
   phone: "Phone", website: "Website", industry: "Industry", city: "City", state: "State", address: "Address",
-  first_name: "First name", last_name: "Last name", notes: "Notes", ignore: "Ignore this column",
+  weakness: "Weakness", first_name: "First name", last_name: "Last name", notes: "Notes", ignore: "Ignore this column",
 };
 const MAPPABLE = ["business_name", "contact_name", "first_name", "last_name", "contact_title", "email", "phone",
-  "website", "industry", "city", "state", "address", "notes", "ignore"];
+  "website", "industry", "city", "state", "address", "weakness", "notes", "ignore"];
 
 const STATUS = {
   ready:     { label: "Ready",          tone: "ok" },
@@ -34,19 +34,18 @@ function Chip({ tone, label, value }) {
   );
 }
 
-function AuditSummary({ s }) {
-  const done = s.audited >= s.total;
+function WebsiteSummary({ p }) {
   return (
     <div className="im-audit">
       <p className="im-help">
-        {done ? `Audit finished: ${s.total} lead${s.total === 1 ? "" : "s"} checked and scored.`
-              : `Checking websites… ${s.audited} of ${s.total} done. You can leave this page; it keeps running.`}
+        Websites checked. Each lead's weakness was compared with what the site really has: a point that was wrong is
+        removed, and an empty weakness is filled from the check.
       </p>
       <div className="im-chips">
-        <Chip tone="bad" label="Hot (most to fix)" value={s.hot} />
-        <Chip tone="warn" label="Warm" value={s.warm} />
-        <Chip tone="neutral" label="Cold" value={s.cold} />
-        <Chip tone="neutral" label="Not fully checked" value={s.incomplete} />
+        <Chip tone="neutral" label="Websites checked" value={p.audit.audited} />
+        <Chip tone="ok" label="With a weakness" value={p.weakness.with_weakness} />
+        <Chip tone="warn" label="Corrected by the AI" value={p.weakness.edited} />
+        <Chip tone="neutral" label="Not fully checked" value={p.audit.incomplete} />
       </div>
     </div>
   );
@@ -75,20 +74,33 @@ function VerifySummary({ v }) {
 function Steps({ p }) {
   const auditDone = p.audit.audited >= p.audit.total;
   const verifyDone = auditDone && p.verify.checked >= p.verify.to_check;
+  const writeDone = verifyDone && p.emails.written >= p.emails.ready;
+  const running = p.stage !== "done" && p.stage !== "stopped";
   const step = (done, active, text) => (
-    <li className={done ? "im-step im-step--done" : active ? "im-step im-step--active" : "im-step"}>
-      <i className={`ti ${done ? "ti-circle-check" : active ? "ti-loader-2" : "ti-circle"}`} /> {text}
+    <li className={done ? "im-step im-step--done" : active && running ? "im-step im-step--active" : "im-step"}>
+      <i className={`ti ${done ? "ti-circle-check" : active && running ? "ti-loader-2" : "ti-circle"}`} /> {text}
     </li>
   );
   return (
     <>
       <ul className="im-steps">
-        {step(auditDone, !auditDone, `Checking websites (${p.audit.audited} of ${p.audit.total})`)}
+        {step(auditDone, !auditDone, `Checking websites and weaknesses (${p.audit.audited} of ${p.audit.total})`)}
         {step(verifyDone, auditDone && !verifyDone, `Checking email addresses (${p.verify.checked} of ${p.verify.to_check})`)}
+        {step(writeDone, verifyDone && !writeDone, `Writing the first emails (${p.emails.written} of ${p.emails.ready})`)}
       </ul>
-      {auditDone && <AuditSummary s={p.audit} />}
+      {auditDone && <WebsiteSummary p={p} />}
       {verifyDone && <VerifySummary v={p.verify} />}
-      {verifyDone && <p className="im-help">All done. Hot and Warm leads with a good address now get their emails written; approve them on the <Link to="/admin/queue">Outreach queue</Link>. Nothing is sent before you approve.</p>}
+      {p.stage === "stopped" && (
+        <div className="im-error" role="alert">
+          The checks stopped before they finished (for example the AI was not reachable). Press "Check now" in Earlier imports to continue.
+        </div>
+      )}
+      {writeDone && (
+        <p className="im-help">
+          Done. {p.emails.written} first email{p.emails.written === 1 ? "" : "s"} wait for you on the{" "}
+          <Link to="/admin/approve">Approve emails</Link> page. Nothing is sent before you approve.
+        </p>
+      )}
     </>
   );
 }
@@ -127,7 +139,7 @@ export default function Import() {
       if (!res?.ok) return;
       const status = await res.json();
       setPipeline((prev) => ({ ...prev, [batchId]: status }));
-      if (status.stage === "done") { clearInterval(timers.current[batchId]); loadBatches(); }
+      if (status.stage === "done" || status.stage === "stopped") { clearInterval(timers.current[batchId]); loadBatches(); }
     };
     tick();
     timers.current[batchId] = setInterval(tick, 3000);
@@ -245,8 +257,9 @@ export default function Import() {
           </button>
         </div>
         <p className="im-help">
-          Needed: <b>business_name</b> and at least one of email, website or phone. Best results with
-          <b> email, website, industry, city, state</b> too. Duplicates and Do-Not-Contact leads are caught for you.
+          Needed: <b>business_name</b> and an <b>email</b> (a lead without one cannot be emailed). Best results with <b>website, industry, city, state</b> and a
+          <b> weakness</b> column (what the business is missing, for example "no online booking"). The AI checks the weakness
+          against the website and corrects it. Duplicates and Do-Not-Contact leads are caught for you.
         </p>
 
         <div className="im-tabs" role="tablist">
@@ -354,7 +367,7 @@ export default function Import() {
           <div className="im-table-wrap">
             <table className="im-table">
               <thead>
-                <tr><th>Row</th><th>Status</th><th>Business</th><th>Contact</th><th>Email</th><th>Phone</th><th>Website</th><th>Industry</th><th>Where</th></tr>
+                <tr><th>Row</th><th>Status</th><th>Business</th><th>Contact</th><th>Email</th><th>Phone</th><th>Website</th><th>Industry</th><th>Where</th><th>Weakness</th></tr>
               </thead>
               <tbody>
                 {preview.rows.slice(0, 100).map((r) => {
@@ -374,6 +387,7 @@ export default function Import() {
                       <td>{r.data.website ? r.data.website.replace(/^https?:\/\//, "") : "—"}</td>
                       <td>{labelFor[r.data.industry] || "—"}{r.ai_fixed.includes("industry") && <span className="im-tag" title="Tagged by AI">AI</span>}</td>
                       <td>{[r.data.city, r.data.state].filter(Boolean).join(", ") || "—"}</td>
+                      <td>{r.data.weakness || "—"}</td>
                     </tr>
                   );
                 })}
@@ -399,7 +413,7 @@ export default function Import() {
 
       {/* ── earlier imports ───────────────────────────────────────────── */}
       <section className="im-card">
-        <div className="im-card-head"><h2>Earlier imports</h2><span className="im-help">Google Maps scrapes appear here too.</span></div>
+        <div className="im-card-head"><h2>Earlier imports</h2></div>
         {batchError && <div className="im-error" role="alert">{batchError}</div>}
         {batches.length === 0 ? <p className="im-help">Nothing imported yet.</p> : (
           <div className="im-table-wrap">
@@ -414,10 +428,11 @@ export default function Import() {
                     <td>{b.imported}</td>
                     <td>{b.leads_now}</td>
                     <td>
-                      {pipeline[b.id] && pipeline[b.id].stage !== "done"
-                        ? (pipeline[b.id].stage === "audit" ? "Checking websites…" : "Checking emails…")
+                      {pipeline[b.id] && !["done", "stopped"].includes(pipeline[b.id].stage)
+                        ? ({ audit: "Checking websites…", verify: "Checking emails…", write: "Writing emails…" }[pipeline[b.id].stage] ?? "Working…")
                         : `${b.audited} of ${b.leads_now}`}
-                      {b.audited < b.leads_now && !pipeline[b.id] && (
+                      {(b.audited < b.leads_now || pipeline[b.id]?.stage === "stopped")
+                        && (!pipeline[b.id] || pipeline[b.id].stage === "stopped") && (
                         <button className="im-link im-link--pad" onClick={() => startPipeline(b.id)}>Check now</button>
                       )}
                     </td>

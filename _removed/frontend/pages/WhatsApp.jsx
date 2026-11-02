@@ -7,7 +7,7 @@ import {
 } from "recharts";
 import { getSettings, fmtDate } from "../utils/settings";
 import LeadDetailModal from "../components/LeadDetailModal";
-import "./WhatsApp.css";   // CSS file same rakh sakte ho, ya rename karo SMS.css
+import "./WhatsApp.css";   // the same CSS file can be kept, or renamed to SMS.css
 
 const API = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 

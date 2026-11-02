@@ -643,3 +643,11 @@ tr.row-selected td { background: rgba(var(--or-rgb),0.06); }
 .journey-badge--warn { color: var(--warn); background: rgba(var(--warn-rgb), 0.14); }
 .journey-badge--bad { color: var(--bad); background: rgba(var(--bad-rgb), 0.14); }
 .journey-next { font-size: 11px; line-height: 1.35; color: var(--muted2); }
+
+/* ── Simplified Leads page ── */
+.lg-simple { display: flex; flex-direction: column; gap: 16px; }
+.lg-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.lg-search { width: 220px; }
+.lg-weak { max-width: 260px; font-size: 12.5px; line-height: 1.4; color: var(--tx-70); }
+.lg-edited { margin-left: 6px; padding: 1px 7px; font-size: 10px; font-weight: 700; color: var(--info); background: rgba(var(--info-rgb), 0.14); border-radius: 999px; cursor: help; white-space: nowrap; }
+.lg-email { font-size: 12.5px; color: var(--tx-70); margin-bottom: 3px; word-break: break-all; }

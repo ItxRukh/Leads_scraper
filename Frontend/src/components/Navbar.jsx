@@ -8,15 +8,12 @@ import { BRAND } from "../brand";
 import { getToken, logout } from "../auth";
 
 const PAGE_TITLES = {
-  "/admin/analytics": { label: "Dashboard",       sub: "From import to GoHighLevel, at a glance" },
-  "/admin/import":    { label: "Import leads",    sub: "Upload or paste leads, clean them and check for duplicates" },
-  "/admin/leads":     { label: "Leads",            sub: "Every imported lead, its score and what the audit found" },
-  "/admin/queue":     { label: "Outreach queue",   sub: "Who to contact next, and when" },
-  "/admin/email":     { label: "Email outreach",   sub: "Campaigns via Instantly" },
-  "/admin/pipeline":  { label: "Pipeline",         sub: "CRM — track every lead stage" },
+  "/admin/dashboard": { label: "Dashboard",       sub: "From import to reply, at a glance" },
+  "/admin/import":    { label: "Import leads",    sub: "Paste or upload leads: they are cleaned, checked and given a first email" },
+  "/admin/leads":     { label: "Leads",            sub: "Every lead, its weakness and where it is" },
+  "/admin/approve":   { label: "Approve emails",   sub: "Read, edit and approve the first email of each lead" },
   "/admin/dnc":       { label: "DNC / Blacklist",  sub: "Do-not-contact list management" },
   "/admin/profiles":  { label: "Industry profiles", sub: "Search, scoring and offer for each industry" },
-  "/admin/integrations": { label: "Integrations", sub: "Instantly, email verification and GoHighLevel" },
   "/admin/settings":  { label: "Settings",         sub: "API keys and platform configuration" },
 };
 
